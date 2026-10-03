@@ -34,7 +34,6 @@
         <span class="role-badge" id="roleBadge" hidden></span>
         <button id="btnRecheck" class="btn btn-secondary" title="Lấy lại giá ngay từ giacaphe.com và đối chiếu"><span class="icon">🔄</span> Kiểm tra lại giá</button>
         <button id="btnTelegramModal" class="btn btn-outline" title="Cấu hình bot Telegram"><span class="icon">✈️</span> Telegram</button>
-        <button id="btnAssistant" class="btn btn-assistant" title="Trợ lý: phân tích, hướng dẫn, cơ chế, hỏi đáp"><span class="icon">🤖</span> Trợ lý</button>
       </div>
     </header>
 
@@ -77,6 +76,9 @@
         </div>
       </div>
     </section>
+
+    <!-- Lời khuyên & cảnh báo của Trợ lý (theo số liệu thật) -->
+    <section class="advice-strip" id="adviceStrip" hidden></section>
 
     <main class="main-content">
       <!-- ================= 1. TỔNG QUAN CHO SẾP ================= -->
@@ -306,17 +308,18 @@
   <!-- Trợ lý -->
   <aside class="assistant-drawer" id="assistantDrawer" aria-hidden="true">
     <div class="assistant-header">
-      <div class="assistant-title"><img src="assets/logo-vietthien.png" alt=""> Trợ lý vị thế</div>
+      <div class="assistant-title"><img src="assets/logo-vietthien.png" alt=""><span>Trợ lý Việt Thiên<small>Hỏi đáp · tư vấn theo số liệu thật</small></span></div>
       <button class="modal-close" id="btnCloseAssistant">&times;</button>
     </div>
     <div class="assistant-tabs" id="assistantTabs">
-      <button class="assistant-tab active" data-tab="analysis">Phân tích</button>
-      <button class="assistant-tab" data-tab="guide">Cách dùng</button>
-      <button class="assistant-tab" data-tab="mechanism">Cơ chế</button>
-      <button class="assistant-tab" data-tab="faq">Hỏi đáp</button>
+      <button class="assistant-tab active" data-tab="chat">💬 Hỏi đáp</button>
+      <button class="assistant-tab" data-tab="analysis">📊 Phân tích</button>
+      <button class="assistant-tab" data-tab="guide">📘 Hướng dẫn</button>
     </div>
     <div class="assistant-body" id="assistantBody"></div>
   </aside>
+  <!-- Nút logo hỏi đáp góc phải màn hình -->
+  <button type="button" class="as-fab" id="assistantFab" aria-label="Mở Trợ lý hỏi đáp" title="Trợ lý hỏi đáp – tư vấn theo số liệu thật"><img src="assets/logo-vietthien.png" alt=""><span class="as-fab-label">Hỏi đáp</span><span class="as-fab-dot" id="asFabDot" hidden></span></button>
   <div class="chart-tooltip" id="chartTooltip" hidden></div>
 
   <script src="engine.js"></script>

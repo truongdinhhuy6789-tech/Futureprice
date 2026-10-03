@@ -2,6 +2,19 @@
 
 Hệ thống nội bộ của Phòng Kinh doanh Xuất khẩu dùng để quản trị **vị thế hàng thực, tài khoản phòng hộ sàn (futures) và hợp đồng trừ lùi (Diff/PTBF)** theo từng kỳ hạn Robusta London. Hệ thống có thêm công cụ tính giá FOB, đo rủi ro và gợi ý số lot cần phòng hộ, mô hình so sánh 4 chiến lược phòng hộ, bảng giá trực tuyến (nguồn giacaphe.com), khung Trợ lý tích hợp và bot Telegram.
 
+## 6 thẻ chính
+
+| Thẻ | Nội dung |
+|---|---|
+| 📈 Tổng quan | Cho sếp: vị thế ròng, lời/lỗ khi giá chạy, đề xuất phòng hộ, biểu đồ, tóm tắt |
+| 📊 Vị thế | Ma trận LDC. Dòng hợp đồng (📒) và Robusta sàn (📉) tự lấy từ thẻ Giao dịch; tồn kho, Arabica, hàng gởi nhập tay; tính FOB từ trừ lùi; hạn mức rủi ro |
+| 📒 Giao dịch | **Hàng thật**: hợp đồng mua/bán giá cố định hoặc trừ lùi, chốt giá và giao hàng từng phần. **Hàng ảo**: lệnh sàn Robusta (HD Bank / PFS092), giá vốn bình quân, lãi/lỗ. Liên kết hai bên bằng 🛡️ Hedge (hiện phần còn hở) |
+| 🛡️ Phòng hộ | So sánh 4 chiến lược (Futures, Put, Collar, Hybrid) theo 5 kịch bản giá |
+| 🌐 Bảng giá | Nhân xô trong nước, **giá FOB theo chủng loại** (diff báo giá, sửa trên trang), **chuẩn chất lượng ICE** (Class P/1/2/3/4, quy đổi R1/R2/R3), giá London / New York / Brazil |
+| 📚 Kiến thức | Thư viện bài viết có tìm kiếm không dấu; dữ liệu trong `app/public/knowledge.js` (tự thêm bài). Nút ⓘ trên các bảng mở đúng bài |
+
+**Trợ lý** (nút logo góc phải): hỏi đáp tự nhiên, tính theo số liệu thật (vd "ký 38,4 tấn S18 WP 3.800 USD FOB thì ký sao chốt sao" → quy đổi lot/cont, so bảng diff, hạng ICE, so nhân xô, tác động vị thế, phương án ký – chốt – phòng hộ, nút ghi thẳng vào sổ hợp đồng). Dải **💡 Trợ lý khuyên** trên đầu trang: việc cần làm và **cảnh báo khi sàn biến động** vượt "bước giá kiểm tra" (thẻ Vị thế).
+
 ## Chạy hệ thống
 
 Cần cài [Node.js](https://nodejs.org). Không cần cài thêm thư viện nào.
@@ -45,7 +58,11 @@ node test_engine.js      # kiểm thử công thức
 | `app/auth.js` | Đăng nhập, phân quyền chỉnh sửa / chỉ xem |
 | `app/telegram_bot.js` | Bot cảnh báo giá và lệnh `/gia /vithe /spread /fob /tuvan` |
 | `app/public/engine.js` | **Toàn bộ công thức tính** (web và bot cùng dùng) |
-| `app/public/app.js`, `charts.js`, `assistant.js` | Giao diện, biểu đồ và Trợ lý |
+| `app/public/app.js`, `charts.js` | Giao diện chung, biểu đồ |
+| `app/public/contracts.js` | Thẻ Giao dịch: sổ hợp đồng (hàng thật) và sổ lệnh sàn (hàng ảo) |
+| `app/public/grades.js` | Giá FOB theo chủng loại & chuẩn chất lượng ICE |
+| `app/public/assistant.js` | Trợ lý: hỏi đáp, phân tích, lời khuyên đầu trang, cảnh báo biến động |
+| `app/public/knowledge.js`, `library.js` | Thư viện kiến thức (nội dung / giao diện) |
 | `app/data/` | Số liệu vị thế, mật khẩu, cấu hình bot, lịch sử giá. **Không đưa lên Git**, tự tạo khi chạy lần đầu |
 | `scripts/mo_link_online.ps1` | Kịch bản mở link online (gọi từ `MO_LINK_ONLINE.bat`) |
 | `tools/` | `cloudflared.exe` và nhật ký đường hầm. **Không đưa lên Git** |
