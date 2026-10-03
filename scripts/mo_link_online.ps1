@@ -1,28 +1,28 @@
-# VIET THIEN COFFEE GROUP - Mo link online (Cloudflare Quick Tunnel) de sep xem tu xa
-# Chay bang MO_LINK_ONLINE.bat. Link doi dia chi moi moi lan mo lai; may phai bat va khong ngu (sleep).
-# Quyen khi mo link (app\data\access.json, openAccess): "editor" = toan quyen chinh sua & nhap lieu, khong dang nhap (mac dinh)
-#   "viewer" = chi xem (nguoi sua dung link <link>/k/<editKey>)   "none" = bat buoc dang nhap
+# VIET THIEN COFFEE GROUP - Mo link online (Cloudflare Quick Tunnel) va BAT BO GIU LINK
+# Bo giu link (app\link_keeper.js) chay an: moi phut kiem tra; link hong thi tu mo lai va ghi link moi vao
+# tools\link_online.txt + chan trang he thong. Khoi dong lai may chu de cap nhat code KHONG lam doi link.
+# Quyen khi mo link: openAccess trong app\data\access.json ("editor" = toan quyen, "viewer" = chi xem, "none" = dang nhap).
 $ErrorActionPreference = 'Stop'
 $root     = Split-Path -Parent $PSScriptRoot
 $app      = Join-Path $root 'app'
 $tools    = Join-Path $root 'tools'
+$data     = Join-Path $app 'data'
 $cf       = Join-Path $tools 'cloudflared.exe'
-$log      = Join-Path $tools 'tunnel.log'
-$linkFile = Join-Path $tools 'link_online.txt'
+$linkJson = Join-Path $data 'link.json'
+$pidFile  = Join-Path $data 'link_keeper.pid'
 $port     = 3456
-$urlRe    = 'https://[a-z0-9-]+\.trycloudflare\.com'
 
 function Say($msg, $color = 'Gray') { Write-Host $msg -ForegroundColor $color }
 function PortUp { [bool](Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue) }
 function Quit($msg) { Say $msg 'Red'; Read-Host 'Nhan Enter de dong'; exit 1 }
 
 Say '======================================================='
-Say '   VIET THIEN COFFEE GROUP - MO LINK ONLINE CHO SEP' 'Yellow'
+Say '   VIET THIEN COFFEE GROUP - MO LINK ONLINE' 'Yellow'
 Say '======================================================='
+if (-not (Get-Command node -ErrorAction SilentlyContinue)) { Quit '[LOI] Chua cai Node.js (https://nodejs.org).' }
 
 # 1. May chu he thong
 if (-not (PortUp)) {
-  if (-not (Get-Command node -ErrorAction SilentlyContinue)) { Quit '[LOI] Chua cai Node.js (https://nodejs.org).' }
   Say '[1/3] Dang khoi dong he thong...'
   Start-Process -FilePath 'node' -ArgumentList 'server.js' -WorkingDirectory $app -WindowStyle Minimized
   for ($i = 0; $i -lt 20 -and -not (PortUp); $i++) { Start-Sleep -Milliseconds 500 }
@@ -41,66 +41,42 @@ if (-not (Test-Path $cf)) {
   if ($sig.Status -ne 'Valid' -or $sig.SignerCertificate.Subject -notmatch 'Cloudflare') { Remove-Item $cf -Force; Quit '[LOI] File tai ve khong co chu ky Cloudflare hop le - da xoa.' }
 } else { Say '[2/3] Cong cu duong ham: san sang.' }
 
-# 3. Duong ham: dang chay thi dung lai link cu, chua chay thi mo moi
-$running = @(Get-Process cloudflared -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $cf })
-$url = $null
-if ($running.Count -and (Test-Path $log)) {
-  $m = Select-String -Path $log -Pattern $urlRe | Select-Object -Last 1
-  if ($m) { $url = $m.Matches[0].Value; Say '[3/3] Link online dang mo san.' }
-}
-if (-not $url) {
-  if ($running.Count) { $running | Stop-Process -Force }
-  Say '[3/3] Dang mo duong ham Cloudflare...'
-  Start-Process -FilePath $cf -ArgumentList 'tunnel', '--url', "http://127.0.0.1:$port", '--no-autoupdate' -WorkingDirectory $tools -WindowStyle Hidden -RedirectStandardError $log -RedirectStandardOutput (Join-Path $tools 'tunnel.out')
-  for ($i = 0; $i -lt 60 -and -not $url; $i++) {
-    Start-Sleep -Milliseconds 500
-    $m = Select-String -Path $log -Pattern $urlRe -ErrorAction SilentlyContinue | Select-Object -First 1
-    if ($m) { $url = $m.Matches[0].Value }
-  }
-  if (-not $url) { Quit '[LOI] Chua lay duoc link (mang cham hoac bi chan). Thu chay lai sau 1 phut.' }
-  Say '      Cho link san sang (khoang 10 giay)...'
-  Start-Sleep -Seconds 8
-  $ready = $false
-  for ($i = 0; $i -lt 10 -and -not $ready; $i++) {
-    try { $r = Invoke-WebRequest -UseBasicParsing -Uri "$url/login" -TimeoutSec 8; $ready = $r.StatusCode -eq 200 } catch { Start-Sleep -Seconds 2 }
-  }
-  if (-not $ready) { Say '      (May nay chua mo thu duoc link - thuong do DNS cham, 1-2 phut sau se vao duoc)' 'Yellow' }
+# 3. Bo giu link: dang chay thi dung lai, chua chay thi bat (an)
+$keeper = $null
+if (Test-Path $pidFile) { try { $keeper = Get-Process -Id ([int](Get-Content $pidFile -Raw)) -ErrorAction Stop } catch { $keeper = $null } }
+if ($keeper) { Say "[3/3] Bo giu link dang chay (PID $($keeper.Id))." }
+else {
+  Say '[3/3] Dang bat bo giu link (chay an, tu mo lai link khi Cloudflare ngat)...'
+  Start-Process -FilePath 'node' -ArgumentList 'link_keeper.js' -WorkingDirectory $app -WindowStyle Hidden
 }
 
-$acc = $null
-try { $acc = Get-Content (Join-Path $app 'data\access.json') -Raw -Encoding UTF8 | ConvertFrom-Json } catch { }
-$mode = if ($acc -and $acc.openAccess) { "$($acc.openAccess)" } else { 'editor' }
-$editUrl = if ($mode -ne 'editor' -and $acc -and $acc.editKey) { "$url/k/$($acc.editKey)" } else { $null }
-Set-Content -Path $linkFile -Value (@($url, $editUrl) | Where-Object { $_ }) -Encoding ASCII
+# Cho link san sang (toi da ~2 phut)
+$url = $null; $status = ''
+for ($i = 0; $i -lt 60; $i++) {
+  Start-Sleep -Seconds 2
+  try { $j = Get-Content $linkJson -Raw -Encoding UTF8 | ConvertFrom-Json; $url = $j.url; $status = $j.status } catch { }
+  if ($url -and $status -eq 'ok') { break }
+}
+if (-not $url) { Quit '[LOI] Chua lay duoc link (mang cham hoac bi chan). Bo giu link van tiep tuc thu - mo lai cua so nay sau 2 phut.' }
 try { Set-Clipboard -Value $url } catch { }
+$acc = $null
+try { $acc = Get-Content (Join-Path $data 'access.json') -Raw -Encoding UTF8 | ConvertFrom-Json } catch { }
+$mode = if ($acc -and $acc.openAccess) { "$($acc.openAccess)" } else { 'editor' }
 
 Say ''
 Say '=======================================================' 'Green'
 Say "  LINK ONLINE:  $url" 'Green'
 Say '  (da chep vao bo nho tam - dan vao Zalo de gui)' 'Green'
+if ($status -ne 'ok') { Say '  (link vua tao, co the can them 1-2 phut DNS moi vao duoc)' 'Yellow' }
 Say '=======================================================' 'Green'
-if ($mode -eq 'editor') {
-  Say '  Ai mo link cung CHINH SUA + NHAP LIEU duoc ngay, KHONG can dang nhap.' 'Cyan'
-  Say '  -> Chi gui cho nguoi tin cay. Lo link: tat roi mo lai de doi dia chi.' 'Cyan'
-} elseif ($mode -eq 'viewer') { Say '  Mo link la XEM duoc ngay - KHONG can mat khau (chi xem).' 'Cyan' }
+if ($mode -eq 'editor') { Say '  Ai mo link cung CHINH SUA + NHAP LIEU duoc, KHONG can dang nhap -> chi gui nguoi tin cay.' 'Cyan' }
+elseif ($mode -eq 'viewer') { Say "  Mo link la XEM duoc ngay. Link chinh sua: $url/k/$($acc.editKey)" 'Cyan' }
 elseif ($acc) { Say "  Bat buoc dang nhap. Mat khau CHI XEM: $($acc.viewerPassword)  |  CHINH SUA: $($acc.editorPassword)" 'Cyan' }
-if ($editUrl) {
-  Say ''
-  Say "  LINK CHINH SUA (cua anh, KHONG gui nguoi ngoai):" 'Yellow'
-  Say "  $editUrl" 'Yellow'
-  Say '  Mo 1 lan la may/dien thoai do co TOAN QUYEN CHINH SUA 30 ngay, khong can mat khau.' 'Yellow'
-}
 Say ''
-Say '  - May nay phai BAT va KHONG de che do ngu (sleep) thi link moi chay.'
-Say '  - Moi lan mo lai duong ham, link DOI dia chi moi -> gui lai link moi.'
-Say '  - Moi lan luu, he thong tu giu ban sao trong app\data\backups (sua nham van khoi phuc duoc).'
+Say '  - Bo giu link chay an: moi phut kiem tra, link hong thi tu mo lai.'
+Say '    Link MOI luon nam o: tools\link_online.txt va chan trang he thong (nut Chep).'
+Say '  - Khoi dong lai may chu de cap nhat code KHONG lam doi link.'
+Say '  - May nay phai BAT va KHONG de che do ngu (sleep).'
 Say '  - Tat link: TAT_LINK_ONLINE.bat  |  Tat ca he thong: DUNG_HE_THONG.bat'
 Say ''
-if ($editUrl) {
-  $ans = Read-Host 'Go S roi Enter de chep LINK CHINH SUA vao bo nho tam (chi Enter = dong cua so, link VAN chay)'
-  if ($ans -match '^[sS]') {
-    try { Set-Clipboard -Value $editUrl } catch { }
-    Say '  Da chep LINK CHINH SUA - dan vao Zalo "Cloud cua toi" de mo tren dien thoai cua anh.' 'Green'
-    Read-Host 'Nhan Enter de dong cua so nay (link VAN tiep tuc chay)'
-  }
-} else { Read-Host 'Nhan Enter de dong cua so nay (link VAN tiep tuc chay)' }
+Read-Host 'Nhan Enter de dong cua so nay (link VAN tiep tuc chay)'

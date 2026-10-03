@@ -39,6 +39,7 @@ node test_engine.js      # kiểm thử công thức
   - `"editor"` (**đang dùng**): mở link là **toàn quyền chỉnh sửa và nhập liệu, không cần đăng nhập**. Ai có link đều sửa được, nên chỉ gửi cho người tin cậy; lỡ lộ link thì tắt rồi mở lại để đổi địa chỉ.
   - `"viewer"`: mở link là chỉ xem (ẩn nút Lưu/Chuyển kỳ hạn/Telegram, khóa ô nhập, máy chủ chặn thao tác ghi). Người sửa dùng **link chỉnh sửa** `…/k/<editKey>` (mở 1 lần là thiết bị đó có quyền sửa 30 ngày) hoặc bấm **Đăng nhập** và nhập `editorPassword` (`vt-…`).
   - `"none"`: bắt buộc đăng nhập; sếp dùng `viewerPassword` (`sep-…`). Sai 8 lần → khóa 10 phút theo IP. Đổi `secret` để đăng xuất mọi thiết bị.
+- **Bộ giữ link** (`app/link_keeper.js`, `MO_LINK_ONLINE.bat` tự bật chạy ẩn): mỗi phút kiểm tra máy chủ và link công khai. Cloudflare xóa đường hầm / link không phản hồi 3 lần → tự mở link mới, ghi vào `tools/link_online.txt` và chân trang hệ thống (nút 📋 Chép); máy chủ tắt → tự bật lại. Đường hầm chạy độc lập nên khởi động lại máy chủ để cập nhật code **không đổi link**. Nhật ký: `app/data/link_keeper.log`.
 - Mỗi lần lưu vị thế, bản cũ được giữ trong `app/data/backups/` (200 bản gần nhất) để khôi phục khi sửa nhầm.
 - Mở trực tiếp trên máy chạy hệ thống (`localhost`) luôn có quyền chỉnh sửa. Link online không cho Google lập chỉ mục (`robots.txt`, `X-Robots-Tag`).
 
@@ -65,6 +66,7 @@ node test_engine.js      # kiểm thử công thức
 | `app/public/knowledge.js`, `library.js` | Thư viện kiến thức (nội dung / giao diện) |
 | `app/data/` | Số liệu vị thế, mật khẩu, cấu hình bot, lịch sử giá. **Không đưa lên Git**, tự tạo khi chạy lần đầu |
 | `scripts/mo_link_online.ps1` | Kịch bản mở link online (gọi từ `MO_LINK_ONLINE.bat`) |
+| `app/link_keeper.js` | Bộ giữ link: theo dõi, tự mở lại đường hầm và tự bật lại máy chủ |
 | `tools/` | `cloudflared.exe` và nhật ký đường hầm. **Không đưa lên Git** |
 | `TAI_LIEU/` | Tài liệu cơ chế và hướng dẫn sử dụng |
 

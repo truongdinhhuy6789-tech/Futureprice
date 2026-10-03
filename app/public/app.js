@@ -79,6 +79,7 @@
     if (!snap) return;
     if (snap.fx && (!state.fx || snap.fx.fetchedAt !== state.fx.fetchedAt)) applyFx(snap.fx);
     if (snap.domestic && (!state.domestic || snap.domestic.fetchedAt !== state.domestic.fetchedAt)) applyDomestic(snap.domestic);
+    if (snap.link !== undefined) applyLink(snap.link);
     state.fetchedAt = snap.fetchedAt || state.fetchedAt; state.changedAt = snap.changedAt || state.changedAt;
     if (snap.data) {
       const changed = {};
@@ -93,6 +94,19 @@
     if (snap.success === false && snap.error) setLive(state.live, 'Nguồn giá lỗi: ' + snap.error);
     tick();
   }
+  // Link online hiện tại (bộ giữ link tự mở lại khi Cloudflare ngắt) – hiện ở chân trang kèm nút chép
+  function applyLink(l) {
+    const el = $('footerLink'); if (!el) return;
+    const key = l ? `${l.url}|${l.status}` : ''; if (el.dataset.key === key) return; el.dataset.key = key;
+    if (!l || !l.url) { el.hidden = true; return; }
+    const ok = l.status === 'ok';
+    el.hidden = false;
+    el.innerHTML = `<span class="lk-dot ${ok ? 'ok' : 'bad'}" title="${ok ? 'Link đang hoạt động' : 'Link đang được kiểm tra / mở lại'}"></span>🔗 Link online: <a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.url.replace(/^https:\/\//, ''))}</a> <button type="button" class="lk-copy" data-url="${esc(l.url)}">📋 Chép</button><span class="dot">•</span>`;
+  }
+  $('footerLink').addEventListener('click', async e => {
+    const b = e.target.closest('.lk-copy'); if (!b) return;
+    try { await navigator.clipboard.writeText(b.dataset.url); toast('📋 Đã chép link – dán vào Zalo để gửi'); } catch (err) { prompt('Chép link:', b.dataset.url); }
+  });
   // Có người khác vừa lưu số liệu vị thế → tải lại (hoặc nhắc nếu mình đang sửa dở)
   function onPositions(updatedAt) {
     if (!updatedAt || !state.data || state.saving || state.reloading || updatedAt === state.data.updatedAt) return;
@@ -118,6 +132,7 @@
     });
     es.addEventListener('fx', e => { seen(); applyFx(JSON.parse(e.data)); });
     es.addEventListener('domestic', e => { seen(); applyDomestic(JSON.parse(e.data)); });
+    es.addEventListener('link', e => { seen(); applyLink(JSON.parse(e.data)); });
     es.addEventListener('positions', e => { seen(); onPositions(JSON.parse(e.data).updatedAt); });
   }
   async function pollOnce() {

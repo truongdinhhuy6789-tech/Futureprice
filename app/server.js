@@ -176,8 +176,20 @@ async function fetchDomestic() {
 }
 fetchDomestic(); setInterval(fetchDomestic, DOMESTIC_EVERY_MS);
 
+// ---------- Link online hiện tại (do link_keeper.js ghi khi mở/mở lại đường hầm) ----------
+const LINK_FILE = path.join(DATA_DIR, 'link.json');
+function readLink() {
+  try { const j = JSON.parse(fs.readFileSync(LINK_FILE, 'utf8')); return j.url ? { url: j.url, since: j.since || null, status: j.status || null } : null; } catch (e) { return null; }
+}
+let linkInfo = readLink();
+fs.watchFile(LINK_FILE, { interval: 5000 }, () => {
+  const n = readLink(); if (JSON.stringify(n) === JSON.stringify(linkInfo)) return;
+  if (n && (!linkInfo || n.url !== linkInfo.url)) console.log('[Link online]', n.url);
+  linkInfo = n; broadcast('link', linkInfo);
+});
+
 function snapshot() {
-  return { success: market.ok, error: market.error, data: market.quotes, fetchedAt: market.fetchedAt, changedAt: market.changedAt, fx: market.fx, domestic: market.domestic, positionsAt };
+  return { success: market.ok, error: market.error, data: market.quotes, fetchedAt: market.fetchedAt, changedAt: market.changedAt, fx: market.fx, domestic: market.domestic, link: linkInfo, positionsAt };
 }
 // Báo cáo bot dùng giá nhân xô tự động (nếu lấy được) thay cho giá nhập tay
 function withDomestic(d) {

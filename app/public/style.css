@@ -1462,3 +1462,10 @@ body.viewer .gr-edit-btn { display: none; }
   .adv-head .adv-btn[data-adv="chat"] { margin-left: auto; }
 }
 @media (prefers-reduced-motion: reduce) { .assistant-drawer { transition: none; } }
+
+/* Link online ở chân trang */
+#footerLink a { color: var(--blue); text-decoration: none; font-family: var(--font-mono); font-size: 11.5px; }
+.lk-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+.lk-dot.ok { background: var(--green); box-shadow: 0 0 6px var(--green); } .lk-dot.bad { background: var(--yellow); }
+.lk-copy { background: transparent; border: 1px solid var(--border-color); color: var(--text-secondary); border-radius: 6px; padding: 1px 7px; font-size: 11px; cursor: pointer; margin-left: 4px; font-family: var(--font-sans); }
+.lk-copy:hover { color: var(--text-primary); border-color: rgba(56, 189, 248, 0.5); }
