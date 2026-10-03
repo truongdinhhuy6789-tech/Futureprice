@@ -8,7 +8,7 @@ Cần cài [Node.js](https://nodejs.org). Không cần cài thêm thư viện n�
 
 ```
 CHAY_HE_THONG.bat        # Windows: bật hệ thống và mở http://localhost:3456
-MO_LINK_ONLINE.bat       # mở link https://….trycloudflare.com để sếp xem từ xa (chép sẵn link, sếp mở là xem – không cần mật khẩu)
+MO_LINK_ONLINE.bat       # mở link https://….trycloudflare.com dùng từ xa (chép sẵn link; mở là toàn quyền, không cần đăng nhập)
 TAT_LINK_ONLINE.bat      # tắt link online (hệ thống trên máy vẫn chạy)
 DUNG_HE_THONG.bat        # tắt hệ thống và link online
 ```
@@ -22,11 +22,12 @@ node test_engine.js      # kiểm thử công thức
 ## Link online và đăng nhập
 
 - `MO_LINK_ONLINE.bat` dùng Cloudflare Quick Tunnel (công cụ `cloudflared.exe` tự tải vào `tools/` lần đầu, có kiểm tra chữ ký số của Cloudflare). Link đổi địa chỉ mỗi lần mở lại đường hầm; máy chạy hệ thống phải bật và không ở chế độ ngủ.
-- Mở link là **xem được ngay, không cần mật khẩu** (chế độ chỉ xem: ẩn nút Lưu/Chuyển kỳ hạn/Telegram, khóa ô nhập, máy chủ chặn mọi thao tác ghi). Ai có link đều xem được số liệu, nên chỉ gửi cho người cần xem; lỡ lộ link thì tắt rồi mở lại để đổi link.
-- **Chỉnh sửa** qua link, không cần mật khẩu: dùng **link chỉnh sửa** `…/k/<editKey>` (cửa sổ `MO_LINK_ONLINE.bat` hiện sẵn; khóa `editKey` tự sinh trong `app/data/access.json`). Mở 1 lần là thiết bị đó có quyền chỉnh sửa 30 ngày. Không gửi link này cho người ngoài; đổi `editKey` để vô hiệu link cũ. Cách khác: bấm **Đăng nhập** và nhập `editorPassword` (`vt-…`). Sai 8 lần → khóa 10 phút theo IP.
+- Quyền khi mở link, đặt bằng `openAccess` trong `app/data/access.json` (sửa xong khởi động lại hệ thống):
+  - `"editor"` (**đang dùng**): mở link là **toàn quyền chỉnh sửa và nhập liệu, không cần đăng nhập**. Ai có link đều sửa được, nên chỉ gửi cho người tin cậy; lỡ lộ link thì tắt rồi mở lại để đổi địa chỉ.
+  - `"viewer"`: mở link là chỉ xem (ẩn nút Lưu/Chuyển kỳ hạn/Telegram, khóa ô nhập, máy chủ chặn thao tác ghi). Người sửa dùng **link chỉnh sửa** `…/k/<editKey>` (mở 1 lần là thiết bị đó có quyền sửa 30 ngày) hoặc bấm **Đăng nhập** và nhập `editorPassword` (`vt-…`).
+  - `"none"`: bắt buộc đăng nhập; sếp dùng `viewerPassword` (`sep-…`). Sai 8 lần → khóa 10 phút theo IP. Đổi `secret` để đăng xuất mọi thiết bị.
 - Mỗi lần lưu vị thế, bản cũ được giữ trong `app/data/backups/` (200 bản gần nhất) để khôi phục khi sửa nhầm.
-- Muốn bắt buộc mật khẩu cả khi xem: đặt `"publicView": false` trong `app/data/access.json` rồi khởi động lại; khi đó sếp đăng nhập bằng `viewerPassword` (`sep-…`). Đổi `secret` để đăng xuất mọi thiết bị.
-- Mở trực tiếp trên máy chạy hệ thống (`localhost`) không cần mật khẩu và có quyền chỉnh sửa. Link online không cho Google lập chỉ mục (`robots.txt`, `X-Robots-Tag`).
+- Mở trực tiếp trên máy chạy hệ thống (`localhost`) luôn có quyền chỉnh sửa. Link online không cho Google lập chỉ mục (`robots.txt`, `X-Robots-Tag`).
 
 ## Giá thời gian thực
 

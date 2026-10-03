@@ -158,9 +158,16 @@ async function fetchDomestic() {
     const high = page.match(/cao nhất (?:ở mức )?([\d.,]+) ?(?:vn)?đ\/kg/i);
     const provinces = [];
     for (const [name, slug] of DOMESTIC_PROVINCES) {
-      const url = `https://giacaphe.com/gia-ca-phe-${slug}/`; let price = null;
-      try { const m = ((await getPage(url)).match(/<title>([^<]*)<\/title>/) || [])[1].match(/([\d.,]+) ?(?:vn)?đ\/kg/i); if (m) price = toVnd(m[1]); } catch (e) { /* tỉnh này để trống */ }
-      provinces.push({ name, price, url });
+      const url = `https://giacaphe.com/gia-ca-phe-${slug}/`; let price = null, change = null;
+      try {
+        const html = await getPage(url);
+        const m = (((html.match(/<title>([^<]*)<\/title>/) || [])[1]) || '').match(/([\d.,]+) ?(?:vn)?đ\/kg/i); if (m) price = toVnd(m[1]);
+        // Mức thay đổi: chỉ lấy khi câu chữ trong bài ghi số thường ("tăng nhẹ 200đ/kg so với…"); bỏ qua style/script
+        const text = html.replace(/<(script|style)[^>]*>[\s\S]*?<\/\1>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+        const c = text.match(/(tăng|giảm)(?: nhẹ| mạnh| thêm)? ([\d.,]+) ?đ\/kg so với/i);
+        if (c) change = (/giảm/i.test(c[1]) ? -1 : 1) * toVnd(c[2]); else if (/(đi ngang|không đổi|giữ nguyên) so với/i.test(text)) change = 0;
+      } catch (e) { /* tỉnh này để trống */ }
+      provinces.push({ name, price, change: price ? change : null, url });
     }
     market.domestic = { avg: toVnd(avg[1]), change: ch ? (/giảm/i.test(ch[1]) ? -1 : 1) * toVnd(ch[2]) : 0, high: high ? toVnd(high[1]) : null, provinces,
       date: (desc.match(/\d{2}\/\d{2}\/\d{4}/) || [])[0] || null, fetchedAt: new Date().toISOString(), source: 'giacaphe.com' };
@@ -216,7 +223,10 @@ const server = http.createServer(async (req, res) => {
   try {
     // ----- Công khai: đăng nhập, đăng xuất, logo -----
     if (pathname === '/robots.txt') { res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('User-agent: *\nDisallow: /\n'); }
-    if (pathname === '/login' && req.method === 'GET') return html(res, 200, auth.loginPage());
+    if (pathname === '/login' && req.method === 'GET') {
+      if (auth.openAccess === 'editor') { res.writeHead(302, { Location: '/' }); return res.end(); } // link đã toàn quyền, không cần đăng nhập
+      return html(res, 200, auth.loginPage());
+    }
     if (pathname === '/login' && req.method === 'POST') {
       const r = auth.checkPassword(req, new URLSearchParams(await readRaw(req)).get('password') || '');
       if (!r.ok) return html(res, 401, auth.loginPage(r.error));
@@ -228,13 +238,13 @@ const server = http.createServer(async (req, res) => {
       if (auth.checkEditKey(req, decodeURIComponent(pathname.slice(3))).ok) auth.setSession(res, req, 'editor');
       res.writeHead(302, { Location: '/', 'Referrer-Policy': 'no-referrer' }); return res.end();
     }
-    // publicView: chưa đăng nhập = chỉ xem; tắt publicView thì bắt buộc đăng nhập
+    // openAccess: chưa đăng nhập = toàn quyền ("editor") / chỉ xem ("viewer") / phải đăng nhập ("none")
     const role = auth.getRole(req);
     if (!role && !pathname.startsWith('/assets/')) {
       if (pathname.startsWith('/api/')) return sendJson(res, 401, { success: false, error: 'Cần đăng nhập' });
       res.writeHead(302, { Location: '/login' }); return res.end();
     }
-    if (pathname === '/api/me') return sendJson(res, 200, { role, local: auth.isDirectLocal(req), tunnel: !!req.headers['cf-ray'], publicView: auth.publicView });
+    if (pathname === '/api/me') return sendJson(res, 200, { role, local: auth.isDirectLocal(req), tunnel: !!req.headers['cf-ray'], publicView: auth.publicView, openAccess: auth.openAccess });
     if (EDITOR_ONLY.includes(pathname) && role !== 'editor') return sendJson(res, 403, { success: false, error: 'Tài khoản chỉ xem – không có quyền thay đổi' });
 
     if (pathname === '/api/stream') {

@@ -1,7 +1,7 @@
 # VIET THIEN COFFEE GROUP - Mo link online (Cloudflare Quick Tunnel) de sep xem tu xa
 # Chay bang MO_LINK_ONLINE.bat. Link doi dia chi moi moi lan mo lai; may phai bat va khong ngu (sleep).
-# Link thuong (gui sep): mo la XEM duoc ngay, khong can mat khau.
-# Link chinh sua (<link>/k/<editKey>, khoa trong app\data\access.json): mo 1 lan la thiet bi do co quyen chinh sua 30 ngay.
+# Quyen khi mo link (app\data\access.json, openAccess): "editor" = toan quyen chinh sua & nhap lieu, khong dang nhap (mac dinh)
+#   "viewer" = chi xem (nguoi sua dung link <link>/k/<editKey>)   "none" = bat buoc dang nhap
 $ErrorActionPreference = 'Stop'
 $root     = Split-Path -Parent $PSScriptRoot
 $app      = Join-Path $root 'app'
@@ -69,19 +69,21 @@ if (-not $url) {
 
 $acc = $null
 try { $acc = Get-Content (Join-Path $app 'data\access.json') -Raw -Encoding UTF8 | ConvertFrom-Json } catch { }
-$editUrl = if ($acc -and $acc.editKey) { "$url/k/$($acc.editKey)" } else { $null }
+$mode = if ($acc -and $acc.openAccess) { "$($acc.openAccess)" } else { 'editor' }
+$editUrl = if ($mode -ne 'editor' -and $acc -and $acc.editKey) { "$url/k/$($acc.editKey)" } else { $null }
 Set-Content -Path $linkFile -Value (@($url, $editUrl) | Where-Object { $_ }) -Encoding ASCII
 try { Set-Clipboard -Value $url } catch { }
 
 Say ''
 Say '=======================================================' 'Green'
-Say "  LINK GUI SEP (chi xem):  $url" 'Green'
-Say '  (da chep vao bo nho tam - dan vao Zalo gui sep)' 'Green'
+Say "  LINK ONLINE:  $url" 'Green'
+Say '  (da chep vao bo nho tam - dan vao Zalo de gui)' 'Green'
 Say '=======================================================' 'Green'
-if ($acc) {
-  if ("$($acc.publicView)" -ne 'False') { Say '  Sep mo link la XEM duoc ngay - KHONG can mat khau.' 'Cyan' }
-  else { Say "  Mat khau CHI XEM (gui sep): $($acc.viewerPassword)" 'Cyan' }
-}
+if ($mode -eq 'editor') {
+  Say '  Ai mo link cung CHINH SUA + NHAP LIEU duoc ngay, KHONG can dang nhap.' 'Cyan'
+  Say '  -> Chi gui cho nguoi tin cay. Lo link: tat roi mo lai de doi dia chi.' 'Cyan'
+} elseif ($mode -eq 'viewer') { Say '  Mo link la XEM duoc ngay - KHONG can mat khau (chi xem).' 'Cyan' }
+elseif ($acc) { Say "  Bat buoc dang nhap. Mat khau CHI XEM: $($acc.viewerPassword)  |  CHINH SUA: $($acc.editorPassword)" 'Cyan' }
 if ($editUrl) {
   Say ''
   Say "  LINK CHINH SUA (cua anh, KHONG gui nguoi ngoai):" 'Yellow'

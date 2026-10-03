@@ -476,11 +476,13 @@
   function renderDomesticBoard() {
     const dm = state.domestic; const box = $('boardDomestic'); if (!box) return;
     if (!dm) { box.innerHTML = ''; return; }
-    const rows = [`<tr><td class="kh"><b>Trung bình Tây Nguyên</b></td><td class="last">${fmt(dm.avg, 0)}<small class="${dm.change > 0 ? 'up' : dm.change < 0 ? 'down' : ''}">${dm.change ? signed(dm.change, 0) : 'không đổi'}</small></td></tr>`]
-      .concat((dm.provinces || []).map(p => `<tr><td class="kh">${esc(p.name)}</td><td class="last">${p.price ? fmt(p.price, 0) : `<a class="dom-link" href="${esc(p.url)}" target="_blank" rel="noopener">xem trên giacaphe.com ↗</a>`}</td></tr>`));
-    if (dm.high) rows.push(`<tr><td class="kh">Cao nhất</td><td>${fmt(dm.high, 0)}</td></tr>`);
+    const chg = v => v === null || v === undefined ? '<td class="muted">—</td>' : `<td class="${v > 0 ? 'up' : v < 0 ? 'down' : ''}"><b>${v ? signed(v, 0) : '0'}</b></td>`;
+    const rows = [`<tr><td class="kh"><b>Trung bình Tây Nguyên</b></td><td class="last">${fmt(dm.avg, 0)}</td>${chg(dm.change)}</tr>`]
+      .concat((dm.provinces || []).map(p => `<tr><td class="kh">${esc(p.name)}</td>${p.price ? `<td class="last">${fmt(p.price, 0)}</td>${chg(p.change)}`
+        : `<td colspan="2"><a class="dom-link" href="${esc(p.url)}" target="_blank" rel="noopener">xem trên giacaphe.com ↗</a></td>`}</tr>`));
+    if (dm.high) rows.push(`<tr><td class="kh">Cao nhất</td><td>${fmt(dm.high, 0)}</td><td></td></tr>`);
     box.innerHTML = `<div class="board-block"><div class="board-head"><h4>Giá cà phê nhân xô trong nước</h4><span class="board-sub">VNĐ/kg · ngày ${esc(dm.date || '—')}</span></div>`
-      + `<div class="table-scroll"><table class="board-table dom-table"><thead><tr><th>Thị trường</th><th>Giá</th></tr></thead><tbody>${rows.join('')}</tbody></table></div>`
+      + `<div class="table-scroll"><table class="board-table dom-table"><thead><tr><th>Thị trường</th><th>Giá</th><th>Thay đổi</th></tr></thead><tbody>${rows.join('')}</tbody></table></div>`
       + `<p class="section-desc board-note">Nguồn: <a href="https://giacaphe.com/gia-ca-phe-noi-dia/" target="_blank" rel="noopener">giacaphe.com</a> – giá giacaphe công bố công khai, hệ thống cập nhật 30 phút/lần. Tỉnh nào trang nguồn không ghi giá công khai thì bấm link để xem.</p></div>`;
   }
   $('btnEditDomestic').addEventListener('click', () => {
@@ -604,7 +606,7 @@
     try {
       const me = await api('/api/me'); state.role = me.role; state.tunnel = !!me.tunnel;
       document.body.classList.toggle('viewer', me.role === 'viewer');
-      const b = $('roleBadge'); b.hidden = me.local;
+      const b = $('roleBadge'); b.hidden = me.local || me.openAccess === 'editor'; // link toàn quyền: không cần nhãn đăng nhập
       // Xem không cần mật khẩu (publicView) → người xem có nút Đăng nhập để chuyển sang chỉnh sửa
       b.innerHTML = me.role === 'viewer' ? `👁 Chỉ xem · ${me.publicView ? '<a href="/login">Đăng nhập</a>' : '<a href="/logout">Đăng xuất</a>'}`
         : '✏️ Chỉnh sửa · <a href="/logout">Đăng xuất</a>';

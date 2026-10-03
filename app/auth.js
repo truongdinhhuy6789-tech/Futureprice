@@ -1,8 +1,9 @@
 // VIỆT THIÊN COFFEE GROUP — Đăng nhập & phân quyền
 // - editor: chỉnh sửa, lưu số liệu, cấu hình bot   - viewer: chỉ xem (dành cho sếp / người được chia sẻ link)
 // - Truy cập trực tiếp trên chính máy chạy hệ thống (localhost, không qua đường hầm) = editor, không cần mật khẩu
-// - publicView (mặc định bật): ai có link là XEM được ngay, không cần mật khẩu
-// - Link chỉnh sửa <link>/k/<editKey>: mở 1 lần là thiết bị đó có quyền chỉnh sửa 30 ngày, không cần mật khẩu
+// - openAccess: quyền của người mở link mà không đăng nhập
+//     "editor" (mặc định): toàn quyền chỉnh sửa và nhập liệu   "viewer": chỉ xem   "none": bắt buộc đăng nhập
+// - Link chỉnh sửa <link>/k/<editKey>: mở 1 lần là thiết bị đó có quyền chỉnh sửa 30 ngày (dùng khi openAccess = "viewer")
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
@@ -10,22 +11,25 @@ const crypto = require('crypto');
 const FILE = path.join(__dirname, 'data', 'access.json');
 const COOKIE = 'vt_sess';
 const MAX_AGE = 30 * 24 * 3600; // 30 ngày
-const NOTE = 'publicView = true: mở link là xem được ngay, không cần mật khẩu (false = bắt buộc đăng nhập cả khi xem, sếp dùng viewerPassword). Link CHỈNH SỬA không cần mật khẩu = <link>/k/<editKey> (đổi editKey để vô hiệu link cũ). editorPassword = mật khẩu chỉnh sửa. Sửa file này xong phải khởi động lại hệ thống. Đổi "secret" để đăng xuất mọi thiết bị.';
+const OPEN_MODES = ['editor', 'viewer', 'none'];
+const NOTE = 'openAccess = quyền của người mở link không cần đăng nhập: "editor" = toàn quyền chỉnh sửa & nhập liệu; "viewer" = chỉ xem (người sửa dùng link <link>/k/<editKey> hoặc editorPassword); "none" = bắt buộc đăng nhập (sếp dùng viewerPassword). Sửa file này xong phải khởi động lại hệ thống. Đổi "secret" để đăng xuất mọi thiết bị, đổi editKey để vô hiệu link chỉnh sửa cũ.';
 
 function genPass(prefix) { return `${prefix}-${crypto.randomInt(100000, 999999)}`; }
 function loadAccess() {
   let a = null;
   try { a = JSON.parse(fs.readFileSync(FILE, 'utf8')); } catch (e) { /* tạo mới bên dưới */ }
   if (!a || !a.editorPassword || !a.viewerPassword || !a.secret) a = { editorPassword: genPass('vt'), viewerPassword: genPass('sep'), secret: crypto.randomBytes(32).toString('hex'), createdAt: new Date().toISOString() };
-  if ('publicView' in a && a.editKey) return a;
-  // Chưa có file, hoặc file bản cũ thiếu trường → bổ sung (giữ nguyên mật khẩu cũ)
-  a = { publicView: true, ...a, editKey: a.editKey || crypto.randomBytes(18).toString('base64url'), note: NOTE };
+  if (OPEN_MODES.includes(a.openAccess) && a.editKey) return a;
+  // Chưa có file, hoặc file bản cũ (publicView…) → mở toàn quyền theo yêu cầu, giữ nguyên mật khẩu cũ
+  const { publicView, ...rest } = a;
+  a = { openAccess: 'editor', ...rest, editKey: rest.editKey || crypto.randomBytes(18).toString('base64url'), note: NOTE };
   fs.mkdirSync(path.dirname(FILE), { recursive: true });
   fs.writeFileSync(FILE, JSON.stringify(a, null, 2), 'utf8');
   return a;
 }
 const access = loadAccess();
-const publicView = String(access.publicView) !== 'false';
+const openAccess = access.openAccess;
+const publicView = openAccess !== 'none'; // không cần đăng nhập vẫn vào được
 
 const sign = p => crypto.createHmac('sha256', access.secret).update(p).digest('base64url');
 function makeToken(role) { const p = `${role}.${Math.floor(Date.now() / 1000) + MAX_AGE}`; return `${Buffer.from(p).toString('base64url')}.${sign(p)}`; }
@@ -51,7 +55,10 @@ function isDirectLocal(req) {
   const proxied = req.headers['cf-connecting-ip'] || req.headers['cf-ray'] || req.headers['x-forwarded-for'];
   return !proxied && (ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1');
 }
-function getRole(req) { return isDirectLocal(req) ? 'editor' : readToken(parseCookies(req)[COOKIE]) || (publicView ? 'viewer' : null); }
+function getRole(req) {
+  if (isDirectLocal(req) || openAccess === 'editor') return 'editor';
+  return readToken(parseCookies(req)[COOKIE]) || (openAccess === 'viewer' ? 'viewer' : null);
+}
 const isHttps = req => req.headers['x-forwarded-proto'] === 'https' || /"scheme":"https"/.test(req.headers['cf-visitor'] || '');
 function setSession(res, req, role) {
   res.setHeader('Set-Cookie', `${COOKIE}=${encodeURIComponent(makeToken(role))}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${MAX_AGE}${isHttps(req) ? '; Secure' : ''}`);
@@ -91,4 +98,4 @@ ${msg}<label for="pw">${publicView ? 'Mật khẩu chỉnh sửa' : 'Mật khẩ
 <button type="submit">Đăng nhập</button><div class="foot">${publicView ? '<a href="./">← Chỉ xem số liệu (không cần mật khẩu)</a>' : 'Mật khẩu chỉnh sửa hoặc mật khẩu chỉ xem do Phòng KD Xuất khẩu cấp'}</div></form></body></html>`;
 }
 
-module.exports = { getRole, setSession, clearSession, checkPassword, checkEditKey, loginPage, isDirectLocal, publicView };
+module.exports = { getRole, setSession, clearSession, checkPassword, checkEditKey, loginPage, isDirectLocal, publicView, openAccess };
