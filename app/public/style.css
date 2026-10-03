@@ -1239,3 +1239,13 @@ body {
   .exec-grid { grid-template-columns: 1fr; }
   .current-price { font-size: 17px; }
 }
+
+.data-table .txt { font-family: var(--font-sans); font-size: 12px; }
+
+/* Đăng nhập & chế độ chỉ xem */
+.role-badge { font-size: 12px; color: var(--text-secondary); background: var(--bg-card-secondary); border: 1px solid var(--border-color); padding: 6px 10px; border-radius: 6px; white-space: nowrap; }
+.role-badge a { color: var(--blue); text-decoration: none; }
+.role-badge[hidden] { display: none; }
+body.viewer .btn-save, body.viewer #btnResetSample, body.viewer #btnRoll, body.viewer #btnTelegramModal, body.viewer #btnEditDomestic { display: none; }
+body.viewer .cell-input:disabled { opacity: 1; cursor: default; background: transparent; border-color: transparent; }
+body.viewer .roll-banner { display: none !important; }

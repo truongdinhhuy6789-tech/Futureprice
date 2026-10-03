@@ -6,6 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const engine = require('./public/engine');
 const telegramBot = require('./telegram_bot');
+const auth = require('./auth');
 
 const PORT = Number(process.env.PORT) || 3456;
 // HOST=127.0.0.1 → chỉ máy này truy cập; mặc định mở cho cả mạng LAN
@@ -131,18 +132,41 @@ function sendJson(res, code, obj) {
   res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
   res.end(JSON.stringify(obj));
 }
-function readBody(req) {
+function readRaw(req) {
   return new Promise((resolve, reject) => {
     let size = 0; const chunks = [];
     req.on('data', c => { size += c.length; if (size > MAX_BODY) { reject(new Error('Dữ liệu gửi lên quá lớn')); req.destroy(); } else chunks.push(c); });
-    req.on('end', () => { try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}')); } catch (e) { reject(new Error('JSON không hợp lệ')); } });
+    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
     req.on('error', reject);
   });
 }
+async function readBody(req) {
+  const raw = await readRaw(req);
+  try { return JSON.parse(raw || '{}'); } catch (e) { throw new Error('JSON không hợp lệ'); }
+}
+const html = (res, code, body) => { res.writeHead(code, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(body); };
+// Thao tác thay đổi dữ liệu — chỉ tài khoản chỉnh sửa
+const EDITOR_ONLY = ['/api/save-matrix', '/api/reset-matrix', '/api/telegram-config', '/api/telegram-test'];
 
 const server = http.createServer(async (req, res) => {
   const { pathname } = new URL(req.url, 'http://localhost');
   try {
+    // ----- Công khai: đăng nhập, đăng xuất, logo -----
+    if (pathname === '/login' && req.method === 'GET') return html(res, 200, auth.loginPage());
+    if (pathname === '/login' && req.method === 'POST') {
+      const r = auth.checkPassword(req, new URLSearchParams(await readRaw(req)).get('password') || '');
+      if (!r.ok) return html(res, 401, auth.loginPage(r.error));
+      auth.setSession(res, req, r.role); res.writeHead(302, { Location: '/' }); return res.end();
+    }
+    if (pathname === '/logout') { auth.clearSession(res); res.writeHead(302, { Location: '/login' }); return res.end(); }
+    const role = auth.getRole(req);
+    if (!role && !pathname.startsWith('/assets/')) {
+      if (pathname.startsWith('/api/')) return sendJson(res, 401, { success: false, error: 'Cần đăng nhập' });
+      res.writeHead(302, { Location: '/login' }); return res.end();
+    }
+    if (pathname === '/api/me') return sendJson(res, 200, { role, local: auth.isDirectLocal(req) });
+    if (EDITOR_ONLY.includes(pathname) && role !== 'editor') return sendJson(res, 403, { success: false, error: 'Tài khoản chỉ xem – không có quyền thay đổi' });
+
     if (pathname === '/api/stream') {
       res.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
       res.write('retry: 3000\n\n');

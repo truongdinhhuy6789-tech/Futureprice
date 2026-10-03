@@ -24,9 +24,13 @@
   }
   async function api(url, body) {
     const opt = body === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
-    return (await fetch(url, opt)).json();
+    const res = await fetch(url, opt);
+    if (res.status === 401) { location.href = '/login'; throw new Error('Cần đăng nhập'); }
+    return res.json();
   }
+  const isViewer = () => state.role === 'viewer';
   function setDirty(v) {
+    if (isViewer()) v = false; // tài khoản chỉ xem: không lưu, không nhắc lưu
     state.dirty = v;
     document.querySelectorAll('.btn-save').forEach(b => {
       b.classList.toggle('unsaved', v);
@@ -81,6 +85,7 @@
       renderQuotes(changed);
     }
     if (snap.success === false && snap.error) setLive(state.live, 'Nguồn giá lỗi: ' + snap.error);
+    tick();
   }
   function connectStream() {
     if (!window.EventSource) return startPolling();
@@ -181,7 +186,7 @@
     const rowHtml = r => {
       const cells = cols.map(c => {
         const v = E.num((state.data.matrix[r.key] || {})[c]);
-        return `<td><input type="number" step="${r.unit === 'lot' ? 1 : 0.01}" inputmode="decimal" class="cell-input" data-key="${r.key}" data-code="${c}" value="${v === 0 ? '' : v}" placeholder="0"></td>`;
+        return `<td><input type="number" step="${r.unit === 'lot' ? 1 : 0.01}" inputmode="decimal" class="cell-input" data-key="${r.key}" data-code="${c}" value="${v === 0 ? '' : v}" placeholder="0"${isViewer() ? ' disabled' : ''}></td>`;
       }).join('');
       return `<tr class="data-row"><td class="row-label">${r.label} (${r.unit === 'lot' ? 'lot' : 'tấn'})</td>${cells}<td class="row-sum" id="sum_${r.key}">0.00</td></tr>`;
     };
@@ -324,16 +329,16 @@
       ['Phí giao dịch quy đổi', `${fmt(h.feeT, 2)} USD/tấn`]
     ].map(([k, v]) => `<div class="hd-item"><span>${k}</span><b>${v}</b></div>`).join('');
     const S = h.strategies; const best = Math.max(...S.map(s => s.floor));
-    const capText = s => s.cap !== null ? `${fmt(s.cap, 2)}` : s.key === 'put' ? 'KHÔNG GIỚI HẠN (tăng theo sàn)' : `MỞ RỘNG (${Math.round(h.params.hybridRatio * 100)}% chốt cứng, ${Math.round((1 - h.params.hybridRatio) * 100)}% tăng theo sàn)`;
+    const capText = s => s.cap !== null ? `${fmt(s.cap, 2)}` : s.key === 'put' ? '<span class="txt">KHÔNG GIỚI HẠN (tăng theo sàn)</span>' : `<span class="txt">MỞ RỘNG (${Math.round(h.params.hybridRatio * 100)}% chốt cứng, ${Math.round((1 - h.params.hybridRatio) * 100)}% tăng theo sàn)</span>`;
     const rows = [
       ['1. Lệnh thực hiện trên sàn MXV / ICE', s => `<b class="order">${esc(s.order)}</b>`],
-      ['2. Chi phí quyền chọn ròng (USD)', s => fmt(s.premium)],
-      ['3. Tổng phí giao dịch MXV (USD)', s => fmt(s.fees)],
-      ['4. Rủi ro nộp thêm tiền ký quỹ (Margin call)', s => esc(s.margin)],
+      ['2. Chi phí quyền chọn ròng (USD)', s => fmt(s.premium, 0)],
+      ['3. Tổng phí giao dịch MXV (USD)', s => fmt(s.fees, 0)],
+      ['4. Rủi ro nộp thêm tiền ký quỹ (Margin call)', s => `<span class="txt">${esc(s.margin)}</span>`],
       ['5. Giá sàn Net bảo vệ tối thiểu (USD/tấn)', s => `<b class="${s.floor === best ? 'best' : ''}">${fmt(s.floor, 2)}</b>`],
       ['6. Giá trần Net tối đa khi giá tăng (USD/tấn)', capText],
       ['7. Giá sàn Net quy đổi (VNĐ/kg)', s => fmt(s.floorVndKg, 2)],
-      ['8. Doanh thu tối thiểu thực nhận (triệu VNĐ)', s => `${fmt(s.revenueMinMillion)} tr`]
+      ['8. Doanh thu tối thiểu thực nhận (triệu VNĐ)', s => `${fmt(s.revenueMinMillion, 0)} tr`]
     ];
     $('hedgeCompare').innerHTML = `<thead><tr><th>Tiêu chí</th>${S.map((s, i) => `<th>Chiến lược ${i + 1}:<br>${esc(s.name)}</th>`).join('')}</tr></thead><tbody>${rows.map(([l, f]) => `<tr><td class="lbl">${l}</td>${S.map(s => `<td>${f(s)}</td>`).join('')}</tr>`).join('')}</tbody>`;
     const keys = ['unhedged', 'futures', 'put', 'collar', 'hybrid'];
@@ -372,7 +377,7 @@
           + `<td class="code">${esc(E.mxvCode(it.Name) || it.Name)}<small>${esc(it.Name)}</small></td>`
           + `<td class="last">${fmt(last, dg)}</td><td class="${cls}"><b>${signed(ch, dg)}</b><small>${esc(it.PtcChange)}%</small></td>`
           + `<td>${fmt(hi, dg)}<small class="up">${signed(hi - prev, dg)}</small></td><td>${fmt(lo, dg)}<small class="${lo - prev >= 0 ? 'up' : 'down'}">${signed(lo - prev, dg)}</small></td>`
-          + `<td>${fmt(it.Volume)}</td><td>${fmt(it.Open, dg)}</td><td>${fmt(prev, dg)}</td><td>${fmt(it.OpInt)}</td><td class="muted">${timeOf(it.Time)}</td><td class="fnd">${fndTxt}</td></tr>`;
+          + `<td>${fmt(it.Volume, 0)}</td><td>${fmt(it.Open, dg)}</td><td>${fmt(prev, dg)}</td><td>${fmt(it.OpInt, 0)}</td><td class="muted">${timeOf(it.Time)}</td><td class="fnd">${fndTxt}</td></tr>`;
       }).join('');
       return `<div class="board-block"><div class="board-head"><h4>${title}</h4><span class="board-sub">${sub}</span><span class="board-sess ${sess.open ? 'on' : ''}">● ${sess.open ? 'Giao dịch' : 'Đóng cửa'}</span></div>`
         + `<div class="table-scroll"><table class="board-table"><thead><tr><th>Kỳ hạn</th><th>Mã MXV</th><th>Giá khớp</th><th>Thay đổi</th><th>Cao nhất</th><th>Thấp nhất</th><th>Khối lượng</th><th>Mở cửa</th><th>Hôm trước</th><th>HĐ mở</th><th>Giờ khớp</th><th>Ngày TB đầu tiên</th></tr></thead><tbody>${rows || '<tr><td colspan="12" class="muted">Chưa có dữ liệu</td></tr>'}</tbody></table></div></div>`;
@@ -518,6 +523,14 @@
   // Link mở thẳng một thẻ: #tong-quan, #vi-the, #phong-ho, #bang-gia
   const HASH_TAB = { '#tong-quan': 'overview', '#vi-the': 'position', '#phong-ho': 'hedge', '#bang-gia': 'board' };
   if (HASH_TAB[location.hash]) saved = HASH_TAB[location.hash];
-  loadData().then(() => { showTab(['overview', 'position', 'hedge', 'board'].includes(saved) ? saved : 'overview'); connectStream(); loadHistory(); });
+  async function loadRole() {
+    try {
+      const me = await api('/api/me'); state.role = me.role;
+      document.body.classList.toggle('viewer', me.role === 'viewer');
+      const b = $('roleBadge'); b.hidden = me.local;
+      b.innerHTML = `${me.role === 'viewer' ? '👁 Chỉ xem' : '✏️ Chỉnh sửa'} · <a href="/logout">Đăng xuất</a>`;
+    } catch (e) { state.role = 'viewer'; }
+  }
+  loadRole().then(loadData).then(() => { showTab(['overview', 'position', 'hedge', 'board'].includes(saved) ? saved : 'overview'); connectStream(); loadHistory(); });
   setInterval(loadHistory, 30 * 60 * 1000);
 })();
