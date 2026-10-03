@@ -48,6 +48,60 @@
     spread_combined_lots: [0, 0, 0, -7, 0, 0]
   };
 
+  // ---------- Chuẩn chất lượng sàn London (ICE Robusta, quy định 22/12/2025) ----------
+  // Giá sàn = giá hàng Class 1. Lỗi (defects) = hạt đen + mảnh vỡ (< ½ hạt) + quả + hạt mốc; mẫu 300 g; cỡ sàng tính theo 1/64 inch
+  const ICE_CLASSES = [
+    { cls: 'P', label: 'Class P (Premium)', defects: 0.5, fm: 0.2, screen: '≥ 90% trên sàng 15, ≥ 96% trên sàng 13', minScreen: 15, adj: 30 },
+    { cls: '1', label: 'Class 1 – chuẩn giá sàn', defects: 3.0, fm: 0.5, screen: '≥ 90% trên sàng 14, ≥ 96% trên sàng 12', minScreen: 14, adj: 0 },
+    { cls: '2', label: 'Class 2', defects: 5.0, fm: 1.0, screen: '≥ 90% trên sàng 13, ≥ 96% trên sàng 12', minScreen: 13, adj: -30 },
+    { cls: '3', label: 'Class 3', defects: 7.5, fm: 1.0, screen: '≥ 90% trên sàng 13, ≥ 96% trên sàng 12', minScreen: 13, adj: -60 },
+    { cls: '4', label: 'Class 4', defects: 8.0, fm: 1.0, screen: '≥ 90% trên sàng 12', minScreen: 12, adj: -90 }
+  ];
+  // Bảng diff FOB theo chủng loại (báo giá công ty). Diff = FOB − giá sàn kỳ tham chiếu
+  const DEFAULT_GRADES = { date: '2026-08-27', refMonth: 'U26', refPrice: 3742, source: 'Báo giá FOB ngày 27/08/2026', items: [
+    { grade: 'Robusta S13 Clean 5% BB', fob: 3908, diff: 166 },
+    { grade: 'Robusta S16 Clean 2% BB', fob: 4004, diff: 262 },
+    { grade: 'Robusta S18 Clean 2% BB', fob: 4004, diff: 262 },
+    { grade: 'Robusta S16 Clean', fob: 4100, diff: 358 },
+    { grade: 'Robusta S18 Clean', fob: 4100, diff: 358 },
+    { grade: 'Robusta S16 Wet Polished', fob: 4177, diff: 435 },
+    { grade: 'Robusta S18 Wet Polished', fob: 4177, diff: 435 }
+  ] };
+  // Đọc quy cách từ tên hàng: cỡ sàng, đánh bóng (WP), sạch (Clean), % đen vỡ, R1/R2/R3
+  function gradeInfo(name) {
+    const s = String(name || '').toUpperCase().replace(/WET\s*POLISHED|ĐÁNH\s*BÓNG/g, 'WP');
+    const scr = /(?:\bS|SCREEN|SÀNG)\s*(1[2-9])\b/.exec(s);
+    const bbm = /(\d+(?:[.,]\d+)?)\s*%/.exec(s);
+    return { screen: scr ? Number(scr[1]) : 0, wp: /\bWP\b/.test(s), clean: /CLEAN|SẠCH/.test(s), bb: bbm ? Number(bbm[1].replace(',', '.')) : null, r: (/\bR([1-3])\b/.exec(s) || [])[1] || '' };
+  }
+  // Hạng ICE tương đương theo % đen vỡ và cỡ sàng (R1 mặc định 2%, R2 mặc định 5% đen vỡ)
+  function iceClassFor(name) {
+    const g = gradeInfo(name);
+    const defects = g.bb !== null ? g.bb : g.r === '1' || g.wp || g.clean ? 2 : g.r === '2' ? 5 : null;
+    const screen = g.screen || (g.r === '1' ? 16 : g.r === '2' ? 13 : 0);
+    if (defects === null || !screen) return '';
+    const c = ICE_CLASSES.slice(1).find(x => defects <= x.defects && screen >= x.minScreen);
+    return c ? c.cls : '—';
+  }
+  // Tìm dòng bảng diff khớp tên hàng (cùng cỡ sàng; ưu tiên cùng WP / Clean / % đen vỡ)
+  function matchGrade(grades, name) {
+    const q = gradeInfo(name); if (!q.screen || !grades || !Array.isArray(grades.items)) return null;
+    let best = null, score = -1;
+    grades.items.forEach(it => {
+      const g = gradeInfo(it.grade); if (g.screen !== q.screen) return;
+      const s = (g.wp === q.wp ? 4 : 0) + (q.bb !== null ? (g.bb === q.bb ? 3 : 0) : (g.bb === null ? 2 : g.bb <= 2 ? 1 : 0)) + (g.clean === q.clean ? 1 : 0);
+      if (s > score) { score = s; best = it; }
+    });
+    return best;
+  }
+  // Đổi diff sang kỳ tham chiếu khác: FOB không đổi → diff mới = diff cũ + (giá kỳ cũ − giá kỳ mới)
+  const convertDiff = (diff, oldPrice, newPrice) => num(diff) + num(oldPrice) - num(newPrice);
+  function normalizeGrades(g) {
+    const x = g && typeof g === 'object' && Array.isArray(g.items) ? g : DEFAULT_GRADES;
+    return { date: /^\d{4}-\d{2}-\d{2}$/.test(String(x.date || '')) ? x.date : '', refMonth: parseCode(x.refMonth) ? String(x.refMonth).toUpperCase() : '', refPrice: num(x.refPrice),
+      source: String(x.source || '').slice(0, 120), items: x.items.map(it => ({ grade: String((it && it.grade) || '').trim().slice(0, 80), fob: num(it && it.fob), diff: num(it && it.diff) })).filter(it => it.grade) };
+  }
+
   // ---------- Số liệu ----------
   function num(v) { const n = typeof v === 'number' ? v : parseFloat(v); return Number.isFinite(n) ? n : 0; }
   // Lấy số; nếu ô trống/không hợp lệ thì dùng mặc định (0 vẫn là giá trị hợp lệ)
@@ -99,7 +153,7 @@
       fobParams: { contract: 'RM' + columns[0], diffUsd: -50, exchangeRate: 25790, processingCostVnd: 700, fxAuto: true },
       hedgeParams: { ...HEDGE_DEFAULTS },
       reference: { domesticPrice: 116500, domesticNote: 'Đắk Lắk / Lâm Đồng', fxRate: 25790, fxNote: 'Vietcombank chuyển khoản' },
-      riskLimit: 200, priceMoveUsd: 30, updatedAt: null
+      riskLimit: 200, priceMoveUsd: 30, grades: normalizeGrades(DEFAULT_GRADES), updatedAt: null
     };
   }
   function sampleData(date) {
@@ -137,6 +191,7 @@
     out.reference = { ...base.reference, ...(raw.reference || {}) };
     out.riskLimit = pick(raw.riskLimit, base.riskLimit);
     out.priceMoveUsd = pick(raw.priceMoveUsd, base.priceMoveUsd);
+    out.grades = normalizeGrades(raw.grades);
     out.contracts = Array.isArray(raw.contracts) ? raw.contracts.map(normalizeContract) : [];
     // Lần đầu có Sổ hợp đồng: số nhập tay ở 6 dòng hợp đồng chuyển thành "số dư đầu kỳ" trong sổ (không mất số)
     if (!Array.isArray(raw.contracts)) CONTRACT_ROWS.forEach(k => columns.forEach(c => {
@@ -508,5 +563,6 @@
     emptyMatrix, defaultData, sampleData, normalize, rollColumns,
     CONTRACT_ROWS, CONTAINER_TONNES, basisForShipment, normalizeContract, contractState, contractRows, effectiveMatrix, fixDeadline, contractSummary,
     TRADE_ROWS, ACCOUNTS, normalizeTrade, tradeLots, tradeRows, futuresBook, linkedLots, contractExposure,
+    ICE_CLASSES, DEFAULT_GRADES, gradeInfo, iceClassFor, matchGrade, convertDiff, normalizeGrades,
     computePositions, analyzeRisk, quotePriceMap, computeSpreads, computeFob };
 });

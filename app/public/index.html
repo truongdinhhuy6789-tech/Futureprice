@@ -44,6 +44,7 @@
       <button class="tab-btn" data-tab="contracts" role="tab"><span class="tab-ico">📒</span><span class="tab-txt">Giao dịch</span></button>
       <button class="tab-btn" data-tab="hedge" role="tab"><span class="tab-ico">🛡️</span><span class="tab-txt">Phòng hộ</span></button>
       <button class="tab-btn" data-tab="board" role="tab"><span class="tab-ico">🌐</span><span class="tab-txt">Bảng giá</span></button>
+      <button class="tab-btn" data-tab="library" role="tab"><span class="tab-ico">📚</span><span class="tab-txt">Kiến thức</span></button>
     </nav>
 
     <div class="recheck-status" id="recheckStatus" hidden></div>
@@ -250,8 +251,23 @@
             <div class="board-tools"><a class="btn btn-outline btn-sm" href="https://giacaphe.com/gia-ca-phe-truc-tuyen/" target="_blank" rel="noopener">Mở trang nguồn ↗</a><button class="btn btn-secondary btn-sm" data-recheck>🔄 Kiểm tra lại giá</button></div>
           </div>
           <div id="boardDomestic"></div>
+          <div id="boardGrades"></div>
           <div id="boardTables"></div>
           <p class="section-desc board-note">Ngày thông báo đầu tiên là ước tính (Robusta: 4 ngày làm việc, Arabica: 7 ngày làm việc trước ngày làm việc đầu tiên của tháng giao hàng; chưa trừ ngày lễ). Nên đảo/đóng vị thế trước ngày này.</p>
+        </section>
+      </section>
+      <!-- ================= 5. THƯ VIỆN KIẾN THỨC ================= -->
+      <section class="tab-panel" data-panel="library" hidden>
+        <section class="section-card lib-card-wrap">
+          <div class="section-header">
+            <div class="title-wrap">
+              <h2 class="section-title">📚 THƯ VIỆN KIẾN THỨC NỀN – GIÁ CẢ, CHẤT LƯỢNG, HỢP ĐỒNG, PHÒNG HỘ, QUẢN TRỊ</h2>
+              <p class="section-desc">Tra cứu nhanh khái niệm và cách làm. Gõ từ khóa không cần dấu (vd: diff, chot gia, ky quy, R2, spread, 38.4). Trên hệ thống, bấm nút ⓘ cạnh mỗi bảng để mở đúng bài.</p>
+            </div>
+          </div>
+          <input id="libSearch" class="form-control lib-search" placeholder="🔍 Tìm trong thư viện… (vd: trừ lùi là gì, khi nào mua bán, chuẩn London)">
+          <div class="lib-cats" id="libCats"></div>
+          <div id="libBody"></div>
         </section>
       </section>
     </main>
@@ -304,9 +320,12 @@
   <div class="chart-tooltip" id="chartTooltip" hidden></div>
 
   <script src="engine.js"></script>
+  <script src="knowledge.js"></script>
   <script src="assistant.js"></script>
   <script src="charts.js"></script>
   <script src="app.js"></script>
   <script src="contracts.js"></script>
+  <script src="grades.js"></script>
+  <script src="library.js"></script>
 </body>
 </html>

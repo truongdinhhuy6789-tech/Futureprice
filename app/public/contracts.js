@@ -152,7 +152,7 @@
         <div class="form-group"><label>Số hợp đồng</label><input id="fNo" class="form-control" value="${esc(form.no)}"></div></div>
       <div class="form-row"><div class="form-group"><label>Ngày ký</label><input type="date" id="fDate" class="form-control" value="${esc(form.date)}"></div>
         <div class="form-group"><label>Đối tác</label><input id="fParty" class="form-control" value="${esc(form.party)}" placeholder="Khách hàng / nhà cung cấp"></div></div>
-      <div class="form-row"><div class="form-group"><label>Hàng / quy cách</label><input id="fGrade" class="form-control" list="ctGrades" value="${esc(form.grade)}" placeholder="R1 S18 WP"><datalist id="ctGrades">${GRADES.map(g => `<option value="${g}">`).join('')}</datalist></div>
+      <div class="form-row"><div class="form-group"><label>Hàng / quy cách</label><input id="fGrade" class="form-control" list="ctGrades" value="${esc(form.grade)}" placeholder="R1 S18 WP"><datalist id="ctGrades">${[...new Set(GRADES.concat(((S().data.grades || {}).items || []).map(it => it.grade)))].map(g => `<option value="${esc(g)}">`).join('')}</datalist></div>
         <div class="form-group"><label>Số lượng</label><div class="input-with-addon"><input type="number" id="fQty" class="form-control" step="0.1" min="0" inputmode="decimal" value="${form.qty || ''}" placeholder="38.4"><span class="addon">tấn</span></div></div></div>
       <div class="form-row"><div class="form-group"><label>Kiểu giá</label>${seg('pricing', [['fixed', 'Giá cố định'], ['diff', 'Trừ lùi (PTBF)']])}</div>
         <div class="form-group" id="gPrice"><label>Giá hợp đồng</label><div class="ct-price-in"><input type="number" id="fPrice" class="form-control" step="1" inputmode="decimal" value="${form.price || ''}" placeholder="3800"><select id="fUnit" class="form-control"><option value="usd"${form.unit === 'usd' ? ' selected' : ''}>USD/tấn</option><option value="vnd"${form.unit === 'vnd' ? ' selected' : ''}>VNĐ/kg</option></select></div></div>
@@ -204,6 +204,14 @@
       out.push(`💰 ${f.pricing === 'diff' ? `Tạm tính theo RM${f.basis} hiện tại ${fmt(lon, 0)} ${signed(f.diff, 0)}` : 'Giá trị'}: <b>${fmt(usd, 0)} USD/t × ${fmt(qty, 2)} t = ${fmt(usd * qty, 0)} USD</b>${fx ? ` ≈ ${fmt(usd * qty * fx / 1e9, 2)} tỷ VNĐ` : ''}`);
       if (f.pricing === 'fixed' && lon) out.push(`📈 Diff ngầm so với RM${f.basis} hiện tại (${fmt(lon, 0)}): <b>${signed(usd - lon, 0)} USD/t</b>`);
       if (fx) { const vk = usd * fx / 1000; out.push(`🇻🇳 Quy đổi <b>${fmt(vk, 0)} đ/kg</b>${dom ? ` · nhân xô TB ${fmt(dom, 0)} đ/kg → chênh <b>${signed(vk - dom, 0)} đ/kg</b> (chưa trừ chế biến, bao bì, vận chuyển ra cảng)` : ''}`); }
+    }
+    // So với bảng diff theo chủng loại (thẻ Bảng giá)
+    const gr = S().data.grades; const gi = E.matchGrade(gr, f.grade); const cls = E.iceClassFor(f.grade);
+    if (cls && cls !== '—') out.push(`📏 Quy cách "${esc(f.grade)}" ≈ <b>ICE Class ${cls}</b>${cls === '1' ? ' (chuẩn giá sàn)' : ` (${signed(E.ICE_CLASSES.find(x => x.cls === cls).adj, 0)} USD/t nếu giao lên sàn)`}`);
+    if (gi && lon) {
+      const refP = lon + E.num(gi.diff); const good = (v, sell) => (sell ? v >= 0 : v <= 0) ? '✅' : '⚠️';
+      if (f.pricing === 'fixed' && f.unit === 'usd' && f.price > 0) { const gap = f.price - refP; out.push(`📋 Bảng diff (${dmy(gr.date)}): <b>${esc(gi.grade)} ${signed(gi.diff, 0)}</b> → giá tham chiếu hôm nay RM${esc(f.basis)} ${fmt(lon, 0)} ${signed(gi.diff, 0)} = <b>${fmt(refP, 0)} USD/t</b>. Hợp đồng ${fmt(f.price, 0)} → ${good(gap, f.side === 'sell')} ${gap >= 0 ? 'cao hơn' : 'thấp hơn'} <b>${fmt(Math.abs(gap), 0)} USD/t</b> (${signed(gap * qty, 0)} USD cho ${fmt(qty, 1)} t).`); }
+      if (f.pricing === 'diff') { const gap = E.num(f.diff) - E.num(gi.diff); out.push(`📋 Bảng diff (${dmy(gr.date)}): <b>${esc(gi.grade)} ${signed(gi.diff, 0)}</b> – diff hợp đồng ${signed(f.diff, 0)} → ${good(gap, f.side === 'sell')} ${gap >= 0 ? 'cao hơn' : 'thấp hơn'} <b>${fmt(Math.abs(gap), 0)} USD/t</b> (${signed(gap * qty, 0)} USD cho ${fmt(qty, 1)} t).`); }
     }
     if (f.pricing === 'diff' && E.parseCode(f.basis)) {
       const fnd = E.firstNoticeDay('RM' + f.basis); const left = E.daysBetween(new Date(), fnd);

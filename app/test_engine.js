@@ -172,4 +172,21 @@ t('Lần đầu có sổ lệnh: số tay ở dòng Robusta sàn chuyển thành
   assert.deepStrictEqual(E.computePositions(x).net, before.net);
 });
 
+// ---------- Chuẩn chất lượng & bảng diff theo chủng loại ----------
+t('Hạng ICE tương đương: R1 S16/S18 ≈ Class 1, R2 S13 5% ≈ Class 2, 7% ≈ Class 3, 10% không đạt', () => {
+  assert.strictEqual(E.iceClassFor('R1 S18 WP'), '1'); assert.strictEqual(E.iceClassFor('Robusta S16 Clean 2% BB'), '1');
+  assert.strictEqual(E.iceClassFor('R2 S13 5% BB'), '2'); assert.strictEqual(E.iceClassFor('R2 S13 7% BB'), '3');
+  assert.strictEqual(E.iceClassFor('S12 8% BB'), '4'); assert.strictEqual(E.iceClassFor('S13 10% BB'), '—'); assert.strictEqual(E.iceClassFor('Arabica'), '');
+  assert.deepStrictEqual(E.ICE_CLASSES.map(c => c.adj), [30, 0, -30, -60, -90]);
+});
+t('Khớp tên hàng với bảng diff (báo giá 27/08/2026, RMU26 3.742)', () => {
+  const g = E.normalizeGrades(E.DEFAULT_GRADES);
+  assert.strictEqual(E.matchGrade(g, 'R1 S18 WP').diff, 435); assert.strictEqual(E.matchGrade(g, 'R1 S16 wet polished').diff, 435);
+  assert.strictEqual(E.matchGrade(g, 'R2 S13 5% BB').diff, 166); assert.strictEqual(E.matchGrade(g, 'R1 S18 2%').diff, 262);
+  assert.strictEqual(E.matchGrade(g, 'S18 Clean').diff, 358); assert.strictEqual(E.matchGrade(g, 'Arabica'), null);
+  g.items.forEach(it => assert.strictEqual(it.fob - g.refPrice, it.diff)); // diff = FOB − giá sàn
+  assert.strictEqual(E.convertDiff(435, 3742, 3448), 729); // giữ FOB 4.177, đổi sang kỳ có giá 3.448
+  assert.strictEqual(E.normalize({}, new Date(2026, 9, 3)).grades.items.length, 7);
+});
+
 console.log(`\nĐạt ${n}/${n} kiểm thử.`);

@@ -49,6 +49,7 @@
     if (tab === 'hedge') renderHedge();
     if (tab === 'board') renderBoard();
     if (tab === 'contracts' && window.VTContracts) window.VTContracts.render();
+    if (tab === 'library' && window.VTLibrary) window.VTLibrary.render();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
   $('tabBar').addEventListener('click', e => { const b = e.target.closest('.tab-btn'); if (b) showTab(b.dataset.tab); });
@@ -445,6 +446,7 @@
       return `<div class="board-block"><div class="board-head"><h4>${title}</h4><span class="board-sub">${sub}</span><span class="board-sess ${sess.open ? 'on' : ''}">● ${sess.open ? 'Giao dịch' : 'Đóng cửa'}</span></div>`
         + `<div class="table-scroll"><table class="board-table"><thead><tr><th>Kỳ hạn</th><th>Mã MXV</th><th>Giá khớp</th><th>Thay đổi</th><th>Cao nhất</th><th>Thấp nhất</th><th>Khối lượng</th><th>Mở cửa</th><th>Hôm trước</th><th>HĐ mở</th><th>Giờ khớp</th><th>Ngày TB đầu tiên</th></tr></thead><tbody>${rows || '<tr><td colspan="12" class="muted">Chưa có dữ liệu</td></tr>'}</tbody></table></div></div>`;
     }).join('');
+    if (window.VTGrades) window.VTGrades.render();
   }
 
   // ---------- Tính giá FOB ----------
@@ -628,8 +630,9 @@
   buildHedgeInputs();
   let saved = 'overview'; try { saved = localStorage.getItem('vt_tab') || 'overview'; } catch (e) { /* bỏ qua */ }
   // Link mở thẳng một thẻ: #tong-quan, #vi-the, #hop-dong, #phong-ho, #bang-gia
-  const HASH_TAB = { '#tong-quan': 'overview', '#vi-the': 'position', '#hop-dong': 'contracts', '#phong-ho': 'hedge', '#bang-gia': 'board' };
+  const HASH_TAB = { '#tong-quan': 'overview', '#vi-the': 'position', '#hop-dong': 'contracts', '#giao-dich': 'contracts', '#phong-ho': 'hedge', '#bang-gia': 'board', '#kien-thuc': 'library' };
   if (HASH_TAB[location.hash]) saved = HASH_TAB[location.hash];
+  if (location.hash.startsWith('#kien-thuc/')) saved = 'library';
   async function loadRole() {
     try {
       const me = await api('/api/me'); state.role = me.role; state.tunnel = !!me.tunnel;
@@ -640,6 +643,6 @@
         : '✏️ Chỉnh sửa · <a href="/logout">Đăng xuất</a>';
     } catch (e) { state.role = 'viewer'; }
   }
-  loadRole().then(loadData).then(() => { showTab(['overview', 'position', 'contracts', 'hedge', 'board'].includes(saved) ? saved : 'overview'); connectStream(); loadHistory(); });
+  loadRole().then(loadData).then(() => { showTab(['overview', 'position', 'contracts', 'hedge', 'board', 'library'].includes(saved) ? saved : 'overview'); connectStream(); loadHistory(); });
   setInterval(loadHistory, 30 * 60 * 1000);
 })();
