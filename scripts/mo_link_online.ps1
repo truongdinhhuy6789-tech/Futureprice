@@ -51,21 +51,26 @@ else {
 }
 
 # Cho link san sang (toi da ~2 phut)
-$url = $null; $status = ''
+$url = $null; $status = ''; $perm = $null
 for ($i = 0; $i -lt 60; $i++) {
   Start-Sleep -Seconds 2
-  try { $j = Get-Content $linkJson -Raw -Encoding UTF8 | ConvertFrom-Json; $url = $j.url; $status = $j.status } catch { }
-  if ($url -and $status -eq 'ok') { break }
+  try { $j = Get-Content $linkJson -Raw -Encoding UTF8 | ConvertFrom-Json; $url = $j.url; $status = $j.status; $perm = $j.permanent } catch { }
+  if ($url -and $status -eq 'ok' -and $perm) { break }
 }
 if (-not $url) { Quit '[LOI] Chua lay duoc link (mang cham hoac bi chan). Bo giu link van tiep tuc thu - mo lai cua so nay sau 2 phut.' }
-try { Set-Clipboard -Value $url } catch { }
+$share = if ($perm) { $perm } else { $url }
+try { Set-Clipboard -Value $share } catch { }
 $acc = $null
 try { $acc = Get-Content (Join-Path $data 'access.json') -Raw -Encoding UTF8 | ConvertFrom-Json } catch { }
 $mode = if ($acc -and $acc.openAccess) { "$($acc.openAccess)" } else { 'editor' }
 
 Say ''
 Say '=======================================================' 'Green'
-Say "  LINK ONLINE:  $url" 'Green'
+if ($perm) {
+  Say "  LINK CO DINH (gui sep, khong bao gio doi):" 'Green'
+  Say "  $perm" 'Green'
+  Say "  Link truc tiep (co the doi):  $url" 'DarkGray'
+} else { Say "  LINK ONLINE:  $url" 'Green' }
 Say '  (da chep vao bo nho tam - dan vao Zalo de gui)' 'Green'
 if ($status -ne 'ok') { Say '  (link vua tao, co the can them 1-2 phut DNS moi vao duoc)' 'Yellow' }
 Say '=======================================================' 'Green'

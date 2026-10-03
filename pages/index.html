@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#0B1120">
+  <title>Việt Thiên Coffee Group | Quản trị vị thế</title>
+  <link rel="icon" type="image/png" href="logo-vietthien.png">
+  <link rel="apple-touch-icon" href="logo-vietthien.png">
+  <!-- Link cố định (GitHub Pages) → tự chuyển tới hệ thống đang chạy trên máy chủ công ty.
+       Địa chỉ hệ thống trong link.json được mã hóa; khóa nằm sau dấu # của link được gửi (không bao giờ gửi lên GitHub). -->
+  <style>
+    :root { --bg: #0B1120; --card: #111B2E; --line: #23334F; --text: #F8FAFC; --muted: #94A3B8; --gold: #FBBF24; --red: #FDA4AF; --green: #6EE7B7; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--bg); color: var(--text); font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; padding: 16px; }
+    .box { width: 100%; max-width: 420px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 30px 24px; text-align: center; box-shadow: 0 10px 25px rgba(0, 0, 0, .5); }
+    .logo { width: 84px; height: 84px; background: #FFFFFF; border-radius: 18px; padding: 6px; object-fit: contain; }
+    h1 { font-size: 18px; letter-spacing: .5px; margin-top: 14px; }
+    .sub { font-size: 13px; color: var(--muted); margin-top: 6px; }
+    .status { margin-top: 22px; font-size: 14px; line-height: 1.6; display: flex; gap: 10px; align-items: center; justify-content: center; }
+    .status.warn { color: var(--gold); } .status.bad { color: var(--red); } .status.ok { color: var(--green); }
+    .spin { width: 18px; height: 18px; border: 2px solid var(--line); border-top-color: var(--gold); border-radius: 50%; animation: s 0.9s linear infinite; flex: 0 0 auto; }
+    .status.warn .spin, .status.bad .spin { display: none; }
+    @keyframes s { to { transform: rotate(360deg); } }
+    button { margin-top: 16px; padding: 10px 18px; border: none; border-radius: 8px; background: linear-gradient(135deg, #B45309, #D97706); color: #FFFFFF; font-size: 14px; font-weight: 700; cursor: pointer; }
+    .foot { margin-top: 20px; font-size: 11.5px; color: var(--muted); line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <main class="box">
+    <img class="logo" src="logo-vietthien.png" alt="Việt Thiên">
+    <h1>VIỆT THIÊN COFFEE GROUP</h1>
+    <p class="sub">Hệ thống quản trị vị thế hàng thực &amp; phòng hộ sàn</p>
+    <div class="status" id="st"><span class="spin"></span><span id="msg">Đang mở hệ thống…</span></div>
+    <button type="button" id="retry" hidden>🔄 Thử lại</button>
+    <p class="foot" id="foot">Link cố định – hệ thống chạy trên máy chủ của công ty.</p>
+  </main>
+  <script>
+  (function () {
+    'use strict';
+    var $ = function (id) { return document.getElementById(id); };
+    function say(m, cls) { $('msg').innerHTML = m; $('st').className = 'status ' + (cls || ''); }
+    var key = decodeURIComponent((location.hash || '').slice(1)).trim();
+    if (!key) { say('Link thiếu mã truy cập. Hãy mở đúng link được gửi (có phần sau dấu #).', 'bad'); return; }
+    if (!window.crypto || !crypto.subtle) { say('Trình duyệt quá cũ – hãy mở bằng Chrome, Safari hoặc Edge bản mới.', 'bad'); return; }
+    var b64 = function (s) { return Uint8Array.from(atob(s), function (c) { return c.charCodeAt(0); }); };
+    function decrypt(obj) {
+      return crypto.subtle.digest('SHA-256', new TextEncoder().encode(key))
+        .then(function (raw) { return crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['decrypt']); })
+        .then(function (k) { return crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(obj.iv) }, k, b64(obj.ct)); })
+        .then(function (pt) { return new TextDecoder().decode(pt); });
+    }
+    // Nguồn địa chỉ: link.json của trang (chống lưu đệm), dự phòng GitHub API (cập nhật tức thì sau khi đổi link)
+    var sources = [
+      function () { return fetch('link.json?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }); },
+      function () { return fetch('https://api.github.com/repos/truongdinhhuy6789-tech/Futureprice/contents/pages/link.json?ref=main&t=' + Date.now(), { cache: 'no-store' })
+        .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }).then(function (j) { return JSON.parse(atob(String(j.content).replace(/\s/g, ''))); }); }
+    ];
+    function reachable(url) { return fetch(url + '/robots.txt?t=' + Date.now(), { mode: 'no-cors', cache: 'no-store' }).then(function () { return true; }, function () { return false; }); }
+    function when(iso) { try { return new Date(iso).toLocaleString('vi-VN', { hour12: false }); } catch (e) { return ''; } }
+    var timer = null;
+    function go() {
+      clearTimeout(timer); $('retry').hidden = true; say('Đang mở hệ thống…');
+      var i = 0, found = null, wrongKey = false;
+      (function next() {
+        if (i >= sources.length) {
+          if (wrongKey) { say('Mã truy cập không đúng – hãy mở đúng link được gửi.', 'bad'); return; }
+          say(found ? 'Hệ thống chưa phản hồi – máy chủ công ty có thể đang tắt, mất mạng hoặc vừa đổi đường truyền. Tự thử lại sau 20 giây…' : 'Chưa lấy được địa chỉ hệ thống. Tự thử lại sau 20 giây…', 'warn');
+          if (found && found.updatedAt) $('foot').textContent = 'Địa chỉ hệ thống cập nhật lúc ' + when(found.updatedAt) + '.';
+          $('retry').hidden = false; timer = setTimeout(go, 20000); return;
+        }
+        var src = sources[i++];
+        src().then(function (obj) {
+          return decrypt(obj).then(function (url) {
+            if (!/^https:\/\/[^\s/]+$/.test(url)) return next();
+            found = found || { url: url, updatedAt: obj.updatedAt };
+            return reachable(url).then(function (ok) { if (ok) { say('Đã tìm thấy hệ thống – đang chuyển…', 'ok'); location.replace(url + '/'); } else next(); });
+          }, function () { wrongKey = true; next(); });
+        }, function () { next(); });
+      })();
+    }
+    $('retry').onclick = go;
+    go();
+  })();
+  </script>
+</body>
+</html>

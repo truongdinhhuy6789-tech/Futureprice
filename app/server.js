@@ -179,7 +179,7 @@ fetchDomestic(); setInterval(fetchDomestic, DOMESTIC_EVERY_MS);
 // ---------- Link online hiện tại (do link_keeper.js ghi khi mở/mở lại đường hầm) ----------
 const LINK_FILE = path.join(DATA_DIR, 'link.json');
 function readLink() {
-  try { const j = JSON.parse(fs.readFileSync(LINK_FILE, 'utf8')); return j.url ? { url: j.url, since: j.since || null, status: j.status || null } : null; } catch (e) { return null; }
+  try { const j = JSON.parse(fs.readFileSync(LINK_FILE, 'utf8')); return j.url ? { url: j.url, since: j.since || null, status: j.status || null, permanent: j.permanent || null } : null; } catch (e) { return null; }
 }
 let linkInfo = readLink();
 fs.watchFile(LINK_FILE, { interval: 5000 }, () => {

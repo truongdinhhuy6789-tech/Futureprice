@@ -1469,3 +1469,5 @@ body.viewer .gr-edit-btn { display: none; }
 .lk-dot.ok { background: var(--green); box-shadow: 0 0 6px var(--green); } .lk-dot.bad { background: var(--yellow); }
 .lk-copy { background: transparent; border: 1px solid var(--border-color); color: var(--text-secondary); border-radius: 6px; padding: 1px 7px; font-size: 11px; cursor: pointer; margin-left: 4px; font-family: var(--font-sans); }
 .lk-copy:hover { color: var(--text-primary); border-color: rgba(56, 189, 248, 0.5); }
+
+.lk-direct { color: var(--text-muted) !important; font-size: 11px; margin-left: 4px; }

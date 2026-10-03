@@ -97,11 +97,13 @@
   // Link online hiện tại (bộ giữ link tự mở lại khi Cloudflare ngắt) – hiện ở chân trang kèm nút chép
   function applyLink(l) {
     const el = $('footerLink'); if (!el) return;
-    const key = l ? `${l.url}|${l.status}` : ''; if (el.dataset.key === key) return; el.dataset.key = key;
+    const key = l ? `${l.url}|${l.status}|${l.permanent}` : ''; if (el.dataset.key === key) return; el.dataset.key = key;
     if (!l || !l.url) { el.hidden = true; return; }
-    const ok = l.status === 'ok';
+    const ok = l.status === 'ok'; const share = l.permanent || l.url;
     el.hidden = false;
-    el.innerHTML = `<span class="lk-dot ${ok ? 'ok' : 'bad'}" title="${ok ? 'Link đang hoạt động' : 'Link đang được kiểm tra / mở lại'}"></span>🔗 Link online: <a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.url.replace(/^https:\/\//, ''))}</a> <button type="button" class="lk-copy" data-url="${esc(l.url)}">📋 Chép</button><span class="dot">•</span>`;
+    // Ưu tiên link cố định (GitHub Pages, không bao giờ đổi); link trực tiếp Cloudflare để dự phòng
+    el.innerHTML = `<span class="lk-dot ${ok ? 'ok' : 'bad'}" title="${ok ? 'Link đang hoạt động' : 'Link đang được kiểm tra / mở lại'}"></span>🔗 ${l.permanent ? 'Link cố định' : 'Link online'}: <a href="${esc(share)}" target="_blank" rel="noopener" title="${esc(share)}">${esc(share.replace(/^https:\/\//, '').replace(/#.*/, '#…'))}</a> <button type="button" class="lk-copy" data-url="${esc(share)}">📋 Chép</button>`
+      + (l.permanent ? ` <a class="lk-direct" href="${esc(l.url)}" target="_blank" rel="noopener" title="Link trực tiếp Cloudflare (có thể đổi): ${esc(l.url)}">trực tiếp ↗</a>` : '') + '<span class="dot">•</span>';
   }
   $('footerLink').addEventListener('click', async e => {
     const b = e.target.closest('.lk-copy'); if (!b) return;

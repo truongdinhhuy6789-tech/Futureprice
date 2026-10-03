@@ -4,9 +4,13 @@
 //  - Link hỏng 3 lần liên tiếp, hoặc Cloudflare báo "Tunnel not found" → tự mở đường hầm mới,
 //    ghi link mới vào tools/link_online.txt và app/data/link.json (hệ thống hiện ở chân trang).
 // Đường hầm chạy độc lập: khởi động lại máy chủ để cập nhật code KHÔNG làm đổi link.
+// Link cố định: mỗi khi link đổi, ghi địa chỉ (đã mã hóa AES-GCM) vào pages/link.json trên GitHub (qua GitHub API,
+// dùng quyền git sẵn có trên máy) → GitHub Pages https://<chủ repo>.github.io/<repo>/#<pagesKey> luôn chuyển tới link mới.
+// Khóa pagesKey nằm trong app/data/access.json và sau dấu # của link gửi đi – không bao giờ lên GitHub.
 // Chạy: node link_keeper.js  (MO_LINK_ONLINE.bat tự chạy ẩn; TAT_LINK_ONLINE.bat / DUNG_HE_THONG.bat tự tắt)
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { spawn, execFileSync } = require('child_process');
 
 const APP = __dirname, ROOT = path.join(APP, '..'), TOOLS = path.join(ROOT, 'tools'), DATA = path.join(APP, 'data');
@@ -50,8 +54,63 @@ const cfFilter = `Get-Process cloudflared -ErrorAction SilentlyContinue | Where-
 function tunnelRunning() { try { return ps(`@(${cfFilter}).Count`) !== '0'; } catch (e) { return false; } }
 function killTunnels() { try { ps(`${cfFilter} | Stop-Process -Force`); } catch (e) { /* không có tiến trình */ } }
 
+// ---------- Link cố định qua GitHub Pages ----------
+const ACCESS_FILE = path.join(DATA, 'access.json');
+function pagesKey() {
+  let a = {}; try { a = JSON.parse(fs.readFileSync(ACCESS_FILE, 'utf8')); } catch (e) { return null; }
+  if (!a.pagesKey) { a.pagesKey = crypto.randomBytes(12).toString('base64url'); fs.writeFileSync(ACCESS_FILE, JSON.stringify(a, null, 2), 'utf8'); log('Đã tạo khóa link cố định (pagesKey).'); }
+  return a.pagesKey;
+}
+function repoInfo() {
+  try {
+    const u = execFileSync('git', ['-C', ROOT, 'remote', 'get-url', 'origin'], { encoding: 'utf8', windowsHide: true, timeout: 10000 }).trim();
+    const m = /github\.com[/:]([^/]+)\/([^/.]+)(?:\.git)?$/.exec(u); return m ? { owner: m[1], repo: m[2] } : null;
+  } catch (e) { return null; }
+}
+function gitToken() {
+  try {
+    const out = execFileSync('git', ['credential', 'fill'], { input: 'protocol=https\nhost=github.com\n\n', encoding: 'utf8', windowsHide: true, timeout: 20000, cwd: ROOT,
+      env: { ...process.env, GIT_TERMINAL_PROMPT: '0', GCM_INTERACTIVE: 'never' } });
+    return (/^password=(.+)$/m.exec(out) || [])[1] || null;
+  } catch (e) { return null; }
+}
+const sha256 = s => crypto.createHash('sha256').update(s, 'utf8').digest();
+function encryptLink(url, key) {
+  const iv = crypto.randomBytes(12); const c = crypto.createCipheriv('aes-256-gcm', sha256(key), iv);
+  const ct = Buffer.concat([c.update(url, 'utf8'), c.final(), c.getAuthTag()]);
+  return { v: 1, iv: iv.toString('base64'), ct: ct.toString('base64'), updatedAt: new Date().toISOString() };
+}
+function decryptLink(obj, key) {
+  const buf = Buffer.from(obj.ct, 'base64'); const d = crypto.createDecipheriv('aes-256-gcm', sha256(key), Buffer.from(obj.iv, 'base64'));
+  d.setAuthTag(buf.subarray(buf.length - 16)); return Buffer.concat([d.update(buf.subarray(0, buf.length - 16)), d.final()]).toString('utf8');
+}
+let pagesPending = false;
+async function publishPages(url) {
+  const key = pagesKey(), repo = repoInfo();
+  if (!key || !repo) { pagesPending = false; return false; }
+  state.permanent = `https://${repo.owner.toLowerCase()}.github.io/${repo.repo}/#${key}`;
+  const token = gitToken(); if (!token) { pagesPending = true; log('Chưa lấy được quyền GitHub – sẽ thử cập nhật link cố định lại sau.'); save(); return false; }
+  const api = `https://api.github.com/repos/${repo.owner}/${repo.repo}/contents/pages/link.json`;
+  const h = { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'User-Agent': 'VietThien-LinkKeeper', 'X-GitHub-Api-Version': '2022-11-28' };
+  try {
+    let sha;
+    const cur = await fetch(`${api}?ref=main`, { headers: h, signal: AbortSignal.timeout(20000) });
+    if (cur.ok) {
+      const j = await cur.json(); sha = j.sha;
+      try { if (decryptLink(JSON.parse(Buffer.from(j.content, 'base64').toString('utf8')), key) === url) { pagesPending = false; state.pagesOk = new Date().toISOString(); save(); return true; } } catch (e) { /* khóa cũ/khác → ghi đè */ }
+    } else if (cur.status !== 404) throw new Error(`đọc HTTP ${cur.status}`);
+    const body = { message: 'Cập nhật link online (tự động)', branch: 'main', content: Buffer.from(JSON.stringify(encryptLink(url, key), null, 2) + '\n').toString('base64') };
+    if (sha) body.sha = sha;
+    const r = await fetch(api, { method: 'PUT', headers: { ...h, 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(20000) });
+    if (!r.ok) throw new Error(`ghi HTTP ${r.status} ${(await r.text()).slice(0, 160)}`);
+    pagesPending = false; state.pagesOk = new Date().toISOString(); save();
+    log('Đã cập nhật link cố định trên GitHub (Pages tự triển khai trong khoảng 1 phút).'); return true;
+  } catch (e) { pagesPending = true; log('Lỗi cập nhật link cố định: ' + e.message + ' – sẽ thử lại.'); save(); return false; }
+}
+
 function setLink(url) {
-  if (url !== state.url) {
+  const changed = url !== state.url;
+  if (changed) {
     state.history.push({ url, at: new Date().toISOString() }); state.history = state.history.slice(-20);
     state.since = new Date().toISOString();
     log(`🔗 Link online: ${url}`);
@@ -59,6 +118,7 @@ function setLink(url) {
   state.url = url;
   try { fs.writeFileSync(LINK_TXT, url + '\r\n', 'ascii'); } catch (e) { log('Lỗi ghi link_online.txt: ' + e.message); }
   save();
+  if (changed) { pagesPending = true; publishPages(url); }
 }
 async function startTunnel(reason) {
   if (!fs.existsSync(CF)) { state.status = 'no-cloudflared'; save(); log('Chưa có tools/cloudflared.exe – chạy MO_LINK_ONLINE.bat để tải.'); return false; }
@@ -92,7 +152,7 @@ async function check() {
       return;
     }
     if (!state.url || !tunnelRunning()) { if (state.url) state.restarts += 1; await startTunnel(state.url ? 'tiến trình đường hầm đã tắt' : 'chưa có link'); return; }
-    if (await httpOk(state.url + '/robots.txt', 15000)) { state.fails = 0; state.status = 'ok'; state.lastOk = new Date().toISOString(); save(); return; }
+    if (await httpOk(state.url + '/robots.txt', 15000)) { state.fails = 0; state.status = 'ok'; state.lastOk = new Date().toISOString(); save(); if (pagesPending) await publishPages(state.url); return; }
     state.fails += 1; state.status = `fail-${state.fails}`; save();
     const gone = /Tunnel not found/i.test(tunnelLogTail());
     log(`Link không phản hồi (lần ${state.fails}/${FAIL_LIMIT})${gone ? ' – Cloudflare báo đường hầm đã bị xóa' : ''}.`);

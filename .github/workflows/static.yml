@@ -1,4 +1,4 @@
-name: Deploy Futureprice static interface to Pages
+name: Deploy Futureprice permanent link (gateway) to Pages
 
 on:
   push:
@@ -28,7 +28,7 @@ jobs:
       - name: Upload static interface
         uses: actions/upload-pages-artifact@v3
         with:
-          path: app/public
+          path: pages
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
