@@ -1170,6 +1170,10 @@ body {
 .rng { display: block; position: relative; width: 70px; height: 3px; margin-top: 6px; border-radius: 2px; background: linear-gradient(90deg, var(--red), var(--green)); }
 .rng span { position: absolute; top: -3px; width: 3px; height: 9px; background: #FFFFFF; border-radius: 1px; transform: translateX(-50%); }
 .board-note { margin-top: 4px; }
+.dom-table { max-width: 560px; }
+.dom-table th:nth-child(2) { text-align: right; }
+.dom-link { font-family: var(--font-sans); font-size: 12px; font-weight: 500; color: var(--blue); text-decoration: none; }
+#domesticNote a, .board-note a, #boardSource a { color: var(--blue); text-decoration: none; }
 .inline-check { font-weight: 500; color: var(--text-muted); margin-left: 6px; cursor: pointer; }
 .form-control:disabled { opacity: 0.7; cursor: not-allowed; }
 

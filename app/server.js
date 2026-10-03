@@ -22,6 +22,8 @@ const QUOTES_FAST_MS = 5000;      // có người đang xem → lấy giá mỗi
 const QUOTES_IDLE_MS = 60000;     // không ai xem → mỗi 60 giây (vẫn đủ cho cảnh báo Telegram)
 const FX_URL = d => `https://www.vietcombank.com.vn/api/exchangerates?date=${d}`;
 const FX_EVERY_MS = 30 * 60 * 1000; // tỷ giá Vietcombank: 30 phút/lần
+const DOMESTIC_URL = 'https://giacaphe.com/gia-ca-phe-noi-dia/';
+const DOMESTIC_EVERY_MS = 30 * 60 * 1000; // giá nhân xô: giacaphe.com cập nhật vài lần/ngày → 30 phút/lần là đủ
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
@@ -31,7 +33,21 @@ function loadPositions() {
   catch (e) { return engine.defaultData(); }
 }
 let positionsAt = null; // lần lưu vị thế gần nhất – màn hình hỏi giá định kỳ dùng để biết có số liệu mới
+// Trước mỗi lần lưu: giữ bản cũ trong data/backups (200 bản gần nhất) để khôi phục khi sửa nhầm qua link
+const BACKUP_DIR = path.join(DATA_DIR, 'backups');
+const BACKUP_KEEP = 200;
+function backupPositions() {
+  try {
+    if (!fs.existsSync(POSITION_FILE)) return;
+    fs.mkdirSync(BACKUP_DIR, { recursive: true });
+    const stamp = new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 23).replace('T', '_').replace(/[:.]/g, '-'); // giờ Việt Nam
+    fs.copyFileSync(POSITION_FILE, path.join(BACKUP_DIR, `position_data_${stamp}.json`));
+    const files = fs.readdirSync(BACKUP_DIR).filter(f => f.startsWith('position_data_')).sort();
+    files.slice(0, Math.max(0, files.length - BACKUP_KEEP)).forEach(f => fs.unlinkSync(path.join(BACKUP_DIR, f)));
+  } catch (e) { console.error('[Sao lưu] Lỗi:', e.message); }
+}
 function savePositions(data) {
+  backupPositions();
   const clean = engine.normalize(data);
   clean.updatedAt = new Date().toISOString();
   const tmp = POSITION_FILE + '.tmp';
@@ -53,7 +69,7 @@ function broadcast(event, payload) {
 setInterval(() => { for (const res of clients) { try { res.write(': ping\n\n'); } catch (e) { clients.delete(res); } } }, 25000);
 
 // ---------- Giá sàn ----------
-const market = { quotes: null, ok: false, error: null, fetchedAt: null, changedAt: null, fx: null };
+const market = { quotes: null, ok: false, error: null, fetchedAt: null, changedAt: null, fx: null, domestic: null };
 let lastSignature = '';
 async function fetchQuotes() {
   try {
@@ -122,13 +138,49 @@ async function fetchFx() {
 }
 fetchFx(); setInterval(fetchFx, FX_EVERY_MS);
 
+// ---------- Giá nhân xô nội địa (giacaphe.com) ----------
+// Chỉ lấy giá giacaphe.com ghi công khai dạng chữ: giá trung bình Tây Nguyên (mô tả trang) và giá tỉnh ghi ngay trong tiêu đề trang tỉnh.
+// Ô giá trong bảng bị mã hóa có chủ đích (dữ liệu thu phí) → không giải mã; tỉnh không ghi giá công khai thì để link xem trên giacaphe.com.
+const DOMESTIC_PROVINCES = [['Đắk Lắk', 'dak-lak'], ['Lâm Đồng', 'lam-dong'], ['Gia Lai', 'gia-lai'], ['Đắk Nông', 'dak-nong']];
+const toVnd = s => Number(String(s).replace(/[.,]/g, ''));
+async function getPage(url) {
+  const res = await fetch(url, { signal: AbortSignal.timeout(15000), headers: { 'User-Agent': 'VietThien-PositionSystem/2.0 (noi bo)' } });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.text();
+}
+async function fetchDomestic() {
+  try {
+    const page = await getPage(DOMESTIC_URL);
+    const desc = (page.match(/<meta name="description" content="([^"]*)"/) || [])[1] || '';
+    const avg = desc.match(/trung bình (?:ở mức )?([\d.,]+) ?(?:vn)?đ\/kg/i);
+    if (!avg) throw new Error('Không thấy giá trung bình trong trang');
+    const ch = desc.slice(avg.index + avg[0].length).match(/^\s*(tăng|giảm)\D{0,12}([\d.,]+)/i);
+    const high = page.match(/cao nhất (?:ở mức )?([\d.,]+) ?(?:vn)?đ\/kg/i);
+    const provinces = [];
+    for (const [name, slug] of DOMESTIC_PROVINCES) {
+      const url = `https://giacaphe.com/gia-ca-phe-${slug}/`; let price = null;
+      try { const m = ((await getPage(url)).match(/<title>([^<]*)<\/title>/) || [])[1].match(/([\d.,]+) ?(?:vn)?đ\/kg/i); if (m) price = toVnd(m[1]); } catch (e) { /* tỉnh này để trống */ }
+      provinces.push({ name, price, url });
+    }
+    market.domestic = { avg: toVnd(avg[1]), change: ch ? (/giảm/i.test(ch[1]) ? -1 : 1) * toVnd(ch[2]) : 0, high: high ? toVnd(high[1]) : null, provinces,
+      date: (desc.match(/\d{2}\/\d{2}\/\d{4}/) || [])[0] || null, fetchedAt: new Date().toISOString(), source: 'giacaphe.com' };
+    broadcast('domestic', market.domestic);
+  } catch (err) { console.error('[Giá nội địa] Lỗi:', err.message); }
+}
+fetchDomestic(); setInterval(fetchDomestic, DOMESTIC_EVERY_MS);
+
 function snapshot() {
-  return { success: market.ok, error: market.error, data: market.quotes, fetchedAt: market.fetchedAt, changedAt: market.changedAt, fx: market.fx, positionsAt };
+  return { success: market.ok, error: market.error, data: market.quotes, fetchedAt: market.fetchedAt, changedAt: market.changedAt, fx: market.fx, domestic: market.domestic, positionsAt };
+}
+// Báo cáo bot dùng giá nhân xô tự động (nếu lấy được) thay cho giá nhập tay
+function withDomestic(d) {
+  if (market.domestic) d.reference = { ...d.reference, domesticPrice: market.domestic.avg, domesticNote: `TB Tây Nguyên – giacaphe.com ${market.domestic.date || ''}`.trim() };
+  return d;
 }
 
 // Bot Telegram: hỏi lệnh mỗi 5 giây (bot tự bỏ qua nếu chưa bật)
 setInterval(() => {
-  telegramBot.pollTelegramCommands(async () => market.quotes, async () => loadPositions()).catch(() => {});
+  telegramBot.pollTelegramCommands(async () => market.quotes, async () => withDomestic(loadPositions())).catch(() => {});
 }, 5000);
 
 // ---------- HTTP ----------
@@ -159,21 +211,30 @@ const EDITOR_ONLY = ['/api/save-matrix', '/api/reset-matrix', '/api/telegram-con
 
 const server = http.createServer(async (req, res) => {
   const { pathname } = new URL(req.url, 'http://localhost');
+  res.setHeader('X-Robots-Tag', 'noindex, nofollow'); // số liệu nội bộ: không cho Google… lập chỉ mục link online
+  res.setHeader('Referrer-Policy', 'same-origin');
   try {
     // ----- Công khai: đăng nhập, đăng xuất, logo -----
+    if (pathname === '/robots.txt') { res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('User-agent: *\nDisallow: /\n'); }
     if (pathname === '/login' && req.method === 'GET') return html(res, 200, auth.loginPage());
     if (pathname === '/login' && req.method === 'POST') {
       const r = auth.checkPassword(req, new URLSearchParams(await readRaw(req)).get('password') || '');
       if (!r.ok) return html(res, 401, auth.loginPage(r.error));
       auth.setSession(res, req, r.role); res.writeHead(302, { Location: '/' }); return res.end();
     }
-    if (pathname === '/logout') { auth.clearSession(res); res.writeHead(302, { Location: '/login' }); return res.end(); }
+    if (pathname === '/logout') { auth.clearSession(res); res.writeHead(302, { Location: auth.publicView ? '/' : '/login' }); return res.end(); }
+    // Link chỉnh sửa không cần mật khẩu: /k/<editKey> → cấp quyền chỉnh sửa rồi chuyển về trang chính (xóa khóa khỏi thanh địa chỉ)
+    if (pathname.startsWith('/k/')) {
+      if (auth.checkEditKey(req, decodeURIComponent(pathname.slice(3))).ok) auth.setSession(res, req, 'editor');
+      res.writeHead(302, { Location: '/', 'Referrer-Policy': 'no-referrer' }); return res.end();
+    }
+    // publicView: chưa đăng nhập = chỉ xem; tắt publicView thì bắt buộc đăng nhập
     const role = auth.getRole(req);
     if (!role && !pathname.startsWith('/assets/')) {
       if (pathname.startsWith('/api/')) return sendJson(res, 401, { success: false, error: 'Cần đăng nhập' });
       res.writeHead(302, { Location: '/login' }); return res.end();
     }
-    if (pathname === '/api/me') return sendJson(res, 200, { role, local: auth.isDirectLocal(req), tunnel: !!req.headers['cf-ray'] });
+    if (pathname === '/api/me') return sendJson(res, 200, { role, local: auth.isDirectLocal(req), tunnel: !!req.headers['cf-ray'], publicView: auth.publicView });
     if (EDITOR_ONLY.includes(pathname) && role !== 'editor') return sendJson(res, 403, { success: false, error: 'Tài khoản chỉ xem – không có quyền thay đổi' });
 
     if (pathname === '/api/stream') {
@@ -215,7 +276,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (pathname === '/api/telegram-test' && req.method === 'POST') {
       if (!market.quotes) await fetchQuotes();
-      return sendJson(res, 200, await telegramBot.sendTelegramMessage(telegramBot.buildMarketReport(market.quotes, loadPositions())));
+      return sendJson(res, 200, await telegramBot.sendTelegramMessage(telegramBot.buildMarketReport(market.quotes, withDomestic(loadPositions()))));
     }
     if (pathname.startsWith('/api/')) return sendJson(res, 404, { success: false, error: 'API không tồn tại' });
 

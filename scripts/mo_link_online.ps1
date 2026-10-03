@@ -1,6 +1,7 @@
 # VIET THIEN COFFEE GROUP - Mo link online (Cloudflare Quick Tunnel) de sep xem tu xa
 # Chay bang MO_LINK_ONLINE.bat. Link doi dia chi moi moi lan mo lai; may phai bat va khong ngu (sleep).
-# Nguoi mo link phai dang nhap: mat khau chi xem (sep-...) hoac chinh sua (vt-...) trong app\data\access.json
+# Link thuong (gui sep): mo la XEM duoc ngay, khong can mat khau.
+# Link chinh sua (<link>/k/<editKey>, khoa trong app\data\access.json): mo 1 lan la thiet bi do co quyen chinh sua 30 ngay.
 $ErrorActionPreference = 'Stop'
 $root     = Split-Path -Parent $PSScriptRoot
 $app      = Join-Path $root 'app'
@@ -66,23 +67,38 @@ if (-not $url) {
   if (-not $ready) { Say '      (May nay chua mo thu duoc link - thuong do DNS cham, 1-2 phut sau se vao duoc)' 'Yellow' }
 }
 
-Set-Content -Path $linkFile -Value $url -Encoding ASCII
-try { Set-Clipboard -Value $url } catch { }
 $acc = $null
-try { $acc = Get-Content (Join-Path $app 'data\access.json') -Raw | ConvertFrom-Json } catch { }
+try { $acc = Get-Content (Join-Path $app 'data\access.json') -Raw -Encoding UTF8 | ConvertFrom-Json } catch { }
+$editUrl = if ($acc -and $acc.editKey) { "$url/k/$($acc.editKey)" } else { $null }
+Set-Content -Path $linkFile -Value (@($url, $editUrl) | Where-Object { $_ }) -Encoding ASCII
+try { Set-Clipboard -Value $url } catch { }
 
 Say ''
 Say '=======================================================' 'Green'
-Say "  LINK ONLINE:  $url" 'Green'
+Say "  LINK GUI SEP (chi xem):  $url" 'Green'
 Say '  (da chep vao bo nho tam - dan vao Zalo gui sep)' 'Green'
 Say '=======================================================' 'Green'
 if ($acc) {
-  Say "  Mat khau CHI XEM   (gui sep)  : $($acc.viewerPassword)" 'Cyan'
-  Say "  Mat khau CHINH SUA (noi bo)   : $($acc.editorPassword)" 'Cyan'
+  if ("$($acc.publicView)" -ne 'False') { Say '  Sep mo link la XEM duoc ngay - KHONG can mat khau.' 'Cyan' }
+  else { Say "  Mat khau CHI XEM (gui sep): $($acc.viewerPassword)" 'Cyan' }
+}
+if ($editUrl) {
+  Say ''
+  Say "  LINK CHINH SUA (cua anh, KHONG gui nguoi ngoai):" 'Yellow'
+  Say "  $editUrl" 'Yellow'
+  Say '  Mo 1 lan la may/dien thoai do co TOAN QUYEN CHINH SUA 30 ngay, khong can mat khau.' 'Yellow'
 }
 Say ''
 Say '  - May nay phai BAT va KHONG de che do ngu (sleep) thi link moi chay.'
-Say '  - Moi lan mo lai duong ham, link DOI dia chi moi -> gui lai link moi cho sep.'
+Say '  - Moi lan mo lai duong ham, link DOI dia chi moi -> gui lai link moi.'
+Say '  - Moi lan luu, he thong tu giu ban sao trong app\data\backups (sua nham van khoi phuc duoc).'
 Say '  - Tat link: TAT_LINK_ONLINE.bat  |  Tat ca he thong: DUNG_HE_THONG.bat'
 Say ''
-Read-Host 'Nhan Enter de dong cua so nay (link VAN tiep tuc chay)'
+if ($editUrl) {
+  $ans = Read-Host 'Go S roi Enter de chep LINK CHINH SUA vao bo nho tam (chi Enter = dong cua so, link VAN chay)'
+  if ($ans -match '^[sS]') {
+    try { Set-Clipboard -Value $editUrl } catch { }
+    Say '  Da chep LINK CHINH SUA - dan vao Zalo "Cloud cua toi" de mo tren dien thoai cua anh.' 'Green'
+    Read-Host 'Nhan Enter de dong cua so nay (link VAN tiep tuc chay)'
+  }
+} else { Read-Host 'Nhan Enter de dong cua so nay (link VAN tiep tuc chay)' }

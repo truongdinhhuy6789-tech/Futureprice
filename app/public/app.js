@@ -76,6 +76,7 @@
   function applySnapshot(snap) {
     if (!snap) return;
     if (snap.fx && (!state.fx || snap.fx.fetchedAt !== state.fx.fetchedAt)) applyFx(snap.fx);
+    if (snap.domestic && (!state.domestic || snap.domestic.fetchedAt !== state.domestic.fetchedAt)) applyDomestic(snap.domestic);
     state.fetchedAt = snap.fetchedAt || state.fetchedAt; state.changedAt = snap.changedAt || state.changedAt;
     if (snap.data) {
       const changed = {};
@@ -114,6 +115,7 @@
       if (h.ok) setLive(true); else setLive(false, 'Nguồn giá gián đoạn – dùng giá gần nhất');
     });
     es.addEventListener('fx', e => { seen(); applyFx(JSON.parse(e.data)); });
+    es.addEventListener('domestic', e => { seen(); applyDomestic(JSON.parse(e.data)); });
     es.addEventListener('positions', e => { seen(); onPositions(JSON.parse(e.data).updatedAt); });
   }
   async function pollOnce() {
@@ -455,10 +457,31 @@
   }
 
   // ---------- Tham chiếu nội địa ----------
+  // Giá nhân xô: tự động từ giacaphe.com (giá trung bình Tây Nguyên); chỉ khi chưa lấy được mới dùng giá nhập tay (✎ Sửa)
   function renderReference() {
-    const ref = state.data.reference;
-    $('domesticPrice').innerHTML = `${fmt(ref.domesticPrice, 0)} <span class="unit">VNĐ/kg</span>`; $('domesticNote').textContent = ref.domesticNote || '';
+    const ref = state.data.reference; const dm = state.domestic; const auto = !!(dm && dm.avg);
+    $('domesticPrice').innerHTML = `${fmt(auto ? dm.avg : ref.domesticPrice, 0)} <span class="unit">VNĐ/kg</span>`;
+    const ch = $('domesticChange');
+    ch.className = `price-change ${auto && dm.change > 0 ? 'positive' : auto && dm.change < 0 ? 'negative' : 'neutral'}`;
+    ch.textContent = !auto ? 'Nhập tay' : dm.change ? signed(dm.change, 0) : 'Không đổi';
+    $('domesticNote').innerHTML = auto ? `TB Tây Nguyên · <a href="https://giacaphe.com/gia-ca-phe-noi-dia/" target="_blank" rel="noopener">giacaphe.com</a> ${esc(dm.date || '')}` : esc(ref.domesticNote || '');
+    $('btnEditDomestic').style.display = auto ? 'none' : '';
     if (!state.fx) $('fxRate').innerHTML = `${fmt(ref.fxRate, 0)} <span class="unit">VNĐ</span>`;
+  }
+  function applyDomestic(dm) {
+    state.domestic = dm;
+    if (state.data) renderReference();
+    renderDomesticBoard();
+  }
+  function renderDomesticBoard() {
+    const dm = state.domestic; const box = $('boardDomestic'); if (!box) return;
+    if (!dm) { box.innerHTML = ''; return; }
+    const rows = [`<tr><td class="kh"><b>Trung bình Tây Nguyên</b></td><td class="last">${fmt(dm.avg, 0)}<small class="${dm.change > 0 ? 'up' : dm.change < 0 ? 'down' : ''}">${dm.change ? signed(dm.change, 0) : 'không đổi'}</small></td></tr>`]
+      .concat((dm.provinces || []).map(p => `<tr><td class="kh">${esc(p.name)}</td><td class="last">${p.price ? fmt(p.price, 0) : `<a class="dom-link" href="${esc(p.url)}" target="_blank" rel="noopener">xem trên giacaphe.com ↗</a>`}</td></tr>`));
+    if (dm.high) rows.push(`<tr><td class="kh">Cao nhất</td><td>${fmt(dm.high, 0)}</td></tr>`);
+    box.innerHTML = `<div class="board-block"><div class="board-head"><h4>Giá cà phê nhân xô trong nước</h4><span class="board-sub">VNĐ/kg · ngày ${esc(dm.date || '—')}</span></div>`
+      + `<div class="table-scroll"><table class="board-table dom-table"><thead><tr><th>Thị trường</th><th>Giá</th></tr></thead><tbody>${rows.join('')}</tbody></table></div>`
+      + `<p class="section-desc board-note">Nguồn: <a href="https://giacaphe.com/gia-ca-phe-noi-dia/" target="_blank" rel="noopener">giacaphe.com</a> – giá giacaphe công bố công khai, hệ thống cập nhật 30 phút/lần. Tỉnh nào trang nguồn không ghi giá công khai thì bấm link để xem.</p></div>`;
   }
   $('btnEditDomestic').addEventListener('click', () => {
     const ref = state.data.reference; const v = prompt('Giá nhân xô nội địa (VNĐ/kg):', ref.domesticPrice); if (v === null) return;
@@ -582,7 +605,9 @@
       const me = await api('/api/me'); state.role = me.role; state.tunnel = !!me.tunnel;
       document.body.classList.toggle('viewer', me.role === 'viewer');
       const b = $('roleBadge'); b.hidden = me.local;
-      b.innerHTML = `${me.role === 'viewer' ? '👁 Chỉ xem' : '✏️ Chỉnh sửa'} · <a href="/logout">Đăng xuất</a>`;
+      // Xem không cần mật khẩu (publicView) → người xem có nút Đăng nhập để chuyển sang chỉnh sửa
+      b.innerHTML = me.role === 'viewer' ? `👁 Chỉ xem · ${me.publicView ? '<a href="/login">Đăng nhập</a>' : '<a href="/logout">Đăng xuất</a>'}`
+        : '✏️ Chỉnh sửa · <a href="/logout">Đăng xuất</a>';
     } catch (e) { state.role = 'viewer'; }
   }
   loadRole().then(loadData).then(() => { showTab(['overview', 'position', 'hedge', 'board'].includes(saved) ? saved : 'overview'); connectStream(); loadHistory(); });

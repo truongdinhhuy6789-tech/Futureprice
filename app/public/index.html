@@ -70,7 +70,7 @@
         </div>
         <div class="ticker-card">
           <div class="card-header"><span class="card-badge vn">NHÂN XÔ NỘI ĐỊA</span><button class="ref-edit" id="btnEditDomestic" title="Cập nhật giá tham chiếu">✎ Sửa</button></div>
-          <div class="price-display"><div class="current-price" id="domesticPrice">— <span class="unit">VNĐ/kg</span></div><div class="price-change neutral">Nhập tay</div></div>
+          <div class="price-display"><div class="current-price" id="domesticPrice">— <span class="unit">VNĐ/kg</span></div><div class="price-change neutral" id="domesticChange">—</div></div>
           <div class="price-meta"><span id="domesticNote">—</span></div>
         </div>
       </div>
@@ -213,6 +213,7 @@
             <div class="title-wrap"><h3 class="section-title">🌐 GIÁ CÀ PHÊ TRỰC TUYẾN SÀN LONDON, NEW YORK, BMF-BRAZIL</h3><p class="section-desc" id="boardSource">Nguồn: giacaphe.com</p></div>
             <div class="board-tools"><a class="btn btn-outline btn-sm" href="https://giacaphe.com/gia-ca-phe-truc-tuyen/" target="_blank" rel="noopener">Mở trang nguồn ↗</a><button class="btn btn-secondary btn-sm" data-recheck>🔄 Kiểm tra lại giá</button></div>
           </div>
+          <div id="boardDomestic"></div>
           <div id="boardTables"></div>
           <p class="section-desc board-note">Ngày thông báo đầu tiên là ước tính (Robusta: 4 ngày làm việc, Arabica: 7 ngày làm việc trước ngày làm việc đầu tiên của tháng giao hàng; chưa trừ ngày lễ). Nên đảo/đóng vị thế trước ngày này.</p>
         </section>
