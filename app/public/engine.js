@@ -96,7 +96,8 @@
     const columns = nextContracts(date);
     return {
       version: DATA_VERSION, columns, matrix: emptyMatrix(columns),
-      fobParams: { contract: 'RM' + columns[0], diffUsd: -50, exchangeRate: 25790, processingCostVnd: 700 },
+      fobParams: { contract: 'RM' + columns[0], diffUsd: -50, exchangeRate: 25790, processingCostVnd: 700, fxAuto: true },
+      hedgeParams: { ...HEDGE_DEFAULTS },
       reference: { domesticPrice: 116500, domesticNote: 'Đắk Lắk / Lâm Đồng', fxRate: 25790, fxNote: 'Vietcombank chuyển khoản' },
       riskLimit: 200, priceMoveUsd: 30, updatedAt: null
     };
@@ -127,8 +128,12 @@
       contract: fp.contract || fp.contractMonth || base.fobParams.contract,
       diffUsd: pick(fp.diffUsd, base.fobParams.diffUsd),
       exchangeRate: pick(fp.exchangeRate, base.fobParams.exchangeRate),
-      processingCostVnd: pick(fp.processingCostVnd, base.fobParams.processingCostVnd)
+      processingCostVnd: pick(fp.processingCostVnd, base.fobParams.processingCostVnd),
+      fxAuto: fp.fxAuto === undefined ? true : !!fp.fxAuto
     };
+    const hp = raw.hedgeParams || {};
+    out.hedgeParams = {};
+    Object.keys(HEDGE_DEFAULTS).forEach(k => { out.hedgeParams[k] = pick(hp[k], HEDGE_DEFAULTS[k]); });
     out.reference = { ...base.reference, ...(raw.reference || {}) };
     out.riskLimit = pick(raw.riskLimit, base.riskLimit);
     out.priceMoveUsd = pick(raw.priceMoveUsd, base.priceMoveUsd);
@@ -222,6 +227,100 @@
     return x.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits });
   }
 
+  // ---------- Mã hợp đồng, ngày thông báo đầu tiên, phiên giao dịch ----------
+  const ALL_LETTERS = { F: 1, G: 2, H: 3, J: 4, K: 5, M: 6, N: 7, Q: 8, U: 9, V: 10, X: 11, Z: 12 };
+  // Tách mã giacaphe (RMX26 / KCH27) → { market, letter, month, year }
+  function parseQuoteName(name) {
+    const m = /^(RM|RC|KC)([FGHJKMNQUVXZ])(\d{2})$/i.exec(String(name || '').trim());
+    if (!m) return null;
+    const p = m[1].toUpperCase(); const letter = m[2].toUpperCase();
+    return { market: p === 'KC' ? 'arabica' : 'robusta', letter, month: ALL_LETTERS[letter], year: 2000 + Number(m[3]), code: letter + m[3] };
+  }
+  // Mã trên bảng giá MXV: Robusta ICE EU = LRC…, Arabica ICE US = KCE…
+  function mxvCode(name) {
+    const q = parseQuoteName(name); if (!q) return '';
+    return (q.market === 'arabica' ? 'KCE' : 'LRC') + q.code;
+  }
+  function addBusinessDays(d, n) { // n âm = lùi; chỉ bỏ thứ 7, chủ nhật (chưa trừ ngày lễ)
+    const x = new Date(d); const step = n < 0 ? -1 : 1; let left = Math.abs(n);
+    while (left > 0) { x.setDate(x.getDate() + step); if (x.getDay() !== 0 && x.getDay() !== 6) left--; }
+    return x;
+  }
+  // Ngày thông báo đầu tiên (ước tính): Robusta = 4 ngày làm việc, Arabica = 7 ngày làm việc trước ngày làm việc đầu tiên của tháng giao hàng
+  function firstNoticeDay(name) {
+    const q = parseQuoteName(name); if (!q) return null;
+    const first = new Date(q.year, q.month - 1, 1);
+    while (first.getDay() === 0 || first.getDay() === 6) first.setDate(first.getDate() + 1);
+    return addBusinessDays(first, q.market === 'arabica' ? -7 : -4);
+  }
+  function daysBetween(a, b) { return Math.round((new Date(b.getFullYear(), b.getMonth(), b.getDate()) - new Date(a.getFullYear(), a.getMonth(), a.getDate())) / 86400000); }
+
+  // Giờ giao dịch (giờ địa phương sàn), thứ 2 – thứ 6
+  const SESSIONS = {
+    robusta: { tz: 'Europe/London', open: [9, 0], close: [17, 30], label: 'ICE London' },
+    arabica: { tz: 'America/New_York', open: [4, 15], close: [13, 30], label: 'ICE New York' },
+    brazil: { tz: 'America/Sao_Paulo', open: [9, 0], close: [15, 35], label: 'B3 Brazil' }
+  };
+  function sessionStatus(market, now) {
+    const s = SESSIONS[market]; if (!s) return { open: false, text: '' };
+    const parts = {}; new Intl.DateTimeFormat('en-GB', { timeZone: s.tz, weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false })
+      .formatToParts(now || new Date()).forEach(p => { parts[p.type] = p.value; });
+    const mins = Number(parts.hour) % 24 * 60 + Number(parts.minute);
+    const weekday = !['Sat', 'Sun'].includes(parts.weekday);
+    const open = weekday && mins >= s.open[0] * 60 + s.open[1] && mins < s.close[0] * 60 + s.close[1];
+    return { open, text: `${s.label}: ${open ? 'đang giao dịch' : (weekday ? 'ngoài giờ giao dịch' : 'nghỉ cuối tuần')}` };
+  }
+
+  // ---------- Mô hình phòng hộ xuất khẩu (4 chiến lược) ----------
+  const HEDGE_DEFAULTS = { qa: 300, lotSize: 10, f0: 0, fobTarget: 0, fxManual: 0, days: 90, kPut: 0, pPut: 120, kCall: 0, pCall: 120, hybridRatio: 0.5, feePerLot: 26 };
+  const SCENARIOS = [
+    { key: 'crash', label: 'Thị trường sụp đổ mạnh', pct: -0.30 },
+    { key: 'down', label: 'Thị trường giảm vừa', pct: -0.15 },
+    { key: 'flat', label: 'Thị trường đi ngang', pct: 0 },
+    { key: 'up', label: 'Thị trường tăng tốt', pct: 0.15 },
+    { key: 'boom', label: 'Thị trường tăng sốc', pct: 0.30 }
+  ];
+  function simulateHedge(input, fxVcb) {
+    const p = { ...HEDGE_DEFAULTS, ...(input || {}) };
+    ['qa', 'lotSize', 'f0', 'fobTarget', 'fxManual', 'days', 'kPut', 'pPut', 'kCall', 'pCall', 'hybridRatio', 'feePerLot'].forEach(k => { p[k] = num(p[k]); });
+    const lots = p.lotSize > 0 ? Math.round(p.qa / p.lotSize) : 0;
+    const diff = p.fobTarget - p.f0;
+    const s0 = p.fxManual > 0 ? p.fxManual : num(fxVcb);
+    const feeT = p.lotSize > 0 ? p.feePerLot / p.lotSize : 0;   // phí giao dịch quy đổi USD/tấn
+    const r = Math.min(Math.max(p.hybridRatio, 0), 1);
+    const lotsF = Math.round(lots * r), lotsP = lots - lotsF;
+    const putPay = sT => Math.max(p.kPut - sT, 0), callPay = sT => Math.max(sT - p.kCall, 0);
+    const value = {
+      unhedged: sT => sT + diff,
+      futures: sT => sT + diff + (p.f0 - sT) - feeT,
+      put: sT => sT + diff + putPay(sT) - p.pPut - feeT,
+      collar: sT => sT + diff + putPay(sT) - callPay(sT) - (p.pPut - p.pCall) - 2 * feeT,
+      hybrid: sT => sT + diff + r * (p.f0 - sT) + (1 - r) * (putPay(sT) - p.pPut) - feeT
+    };
+    const tons = lots * p.lotSize;
+    const mk = (key, name, order, premium, fees, margin, floor, cap) => ({
+      key, name, order, premium: round2(premium), fees: round2(fees), margin, floor: round2(floor), cap: cap === null ? null : round2(cap),
+      floorVndKg: round2(floor * s0 / 1000), revenueMinMillion: Math.round(floor * p.qa * s0 / 1e6)
+    });
+    const strategies = [
+      mk('futures', 'Thuần Futures', `BÁN ${lots} lot Futures`, 0, lots * p.feePerLot, 'CÓ – cần quỹ dự phòng ký quỹ, nộp thêm khi giá tăng mạnh',
+        p.f0 + diff - feeT, p.f0 + diff - feeT),
+      mk('put', 'Thuần Long Put (quyền chọn bán)', `MUA ${lots} lot Put strike ${fmt(p.kPut, 0)}`, tons * p.pPut, lots * p.feePerLot, 'KHÔNG (chỉ trả phí quyền chọn)',
+        p.kPut + diff - p.pPut - feeT, null),
+      mk('collar', 'Collar (Put + Call)', `MUA ${lots} lot Put ${fmt(p.kPut, 0)} + BÁN ${lots} lot Call ${fmt(p.kCall, 0)}`, tons * (p.pPut - p.pCall), 2 * lots * p.feePerLot,
+        `CÓ – chỉ khi giá vượt trần ${fmt(p.kCall, 0)}`, p.kPut + diff - (p.pPut - p.pCall) - 2 * feeT, p.kCall + diff - (p.pPut - p.pCall) - 2 * feeT),
+      mk('hybrid', `Hybrid ${Math.round(r * 100)}% Futures + ${Math.round((1 - r) * 100)}% Put`, `BÁN ${lotsF} lot Futures + MUA ${lotsP} lot Put ${fmt(p.kPut, 0)}`,
+        lotsP * p.lotSize * p.pPut, lots * p.feePerLot, `GIẢM ${Math.round((1 - r) * 100)}% so với thuần Futures`,
+        r * (p.f0 + diff - feeT) + (1 - r) * (p.kPut + diff - p.pPut - feeT), null)
+    ];
+    const scenarios = SCENARIOS.map(s => {
+      const sT = p.f0 * (1 + s.pct); const row = { ...s, ice: round2(sT) };
+      Object.keys(value).forEach(k => { row[k] = round2(value[k](sT)); });
+      return row;
+    });
+    return { params: p, lots, diff: round2(diff), s0, feeT: round2(feeT), strategies, scenarios };
+  }
+
   // Số có dấu: +21 / -13 / 0 (không hiện "+-0")
   function signed(n, d) {
     const digits = d === undefined ? 0 : d; const p = Math.pow(10, digits);
@@ -230,7 +329,8 @@
   }
 
   return { MONTH_LETTERS, LETTER_MONTHS, LOT_TONNES, NUM_COLUMNS, ROWS, GROUPS, DATA_VERSION,
-    num, pick, round2, fmt, signed, contractCode, parseCode, contractLabel, isExpired, nextContracts,
+    num, pick, round2, fmt, signed, contractCode,
+    parseQuoteName, mxvCode, firstNoticeDay, daysBetween, sessionStatus, HEDGE_DEFAULTS, SCENARIOS, simulateHedge, parseCode, contractLabel, isExpired, nextContracts,
     emptyMatrix, defaultData, sampleData, normalize, rollColumns,
     computePositions, analyzeRisk, quotePriceMap, computeSpreads, computeFob };
 });

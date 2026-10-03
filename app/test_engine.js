@@ -65,4 +65,24 @@ t('Số có dấu không hiện "+-0"', () => {
   assert.strictEqual(E.signed(-0), '0'); assert.strictEqual(E.signed(21), '+21'); assert.strictEqual(E.signed(-13.4), '-13'); assert.strictEqual(E.signed(0.004, 2), '0.00');
 });
 
+t('Mã MXV & ngày thông báo đầu tiên (khớp bảng giá MXV)', () => {
+  assert.strictEqual(E.mxvCode('RMX26'), 'LRCX26'); assert.strictEqual(E.mxvCode('KCH27'), 'KCEH27');
+  const d = x => { const f = E.firstNoticeDay(x); return `${f.getDate()}/${f.getMonth() + 1}/${f.getFullYear()}`; };
+  assert.strictEqual(d('RMX26'), '27/10/2026'); assert.strictEqual(d('RMF27'), '28/12/2026'); assert.strictEqual(d('RMH27'), '23/2/2027');
+  assert.strictEqual(d('KCH27'), '18/2/2027'); assert.strictEqual(d('KCK27'), '22/4/2027');
+});
+
+t('Mô hình phòng hộ 4 chiến lược = bảng tính tham khảo', () => {
+  const h = E.simulateHedge({ qa: 300, lotSize: 10, f0: 4600, fobTarget: 4200, fxManual: 25500, kPut: 4300, pPut: 120, kCall: 4600, pCall: 120, hybridRatio: 0.5, feePerLot: 26 }, 25400);
+  assert.strictEqual(h.lots, 30); assert.strictEqual(h.diff, -400); assert.strictEqual(h.feeT, 2.6);
+  const s = Object.fromEntries(h.strategies.map(x => [x.key, x]));
+  assert.strictEqual(s.futures.floor, 4197.4); assert.strictEqual(s.put.floor, 3777.4); assert.strictEqual(s.collar.floor, 3894.8); assert.strictEqual(s.hybrid.floor, 3987.4);
+  assert.strictEqual(s.collar.cap, 4194.8); assert.strictEqual(s.put.cap, null);
+  assert.strictEqual(s.put.premium, 36000); assert.strictEqual(s.hybrid.premium, 18000); assert.strictEqual(s.collar.fees, 1560);
+  assert.strictEqual(s.futures.floorVndKg, 107033.7); assert.strictEqual(s.put.revenueMinMillion, 28897);
+  const sc = Object.fromEntries(h.scenarios.map(x => [x.key, x]));
+  assert.strictEqual(sc.crash.ice, 3220); assert.strictEqual(sc.crash.collar, 3894.8); assert.strictEqual(sc.crash.hybrid, 3987.4);
+  assert.strictEqual(sc.flat.hybrid, 4137.4); assert.strictEqual(sc.up.collar, 4194.8); assert.strictEqual(sc.boom.hybrid, 4827.4);
+});
+
 console.log(`\nĐạt ${n}/${n} kiểm thử.`);

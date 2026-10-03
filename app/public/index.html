@@ -2,9 +2,13 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0B1120">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Việt Thiên Vị Thế">
   <title>Việt Thiên Coffee Group | Quản Trị Vị Thế Cà Phê</title>
   <link rel="icon" type="image/png" href="assets/logo-vietthien.png">
+  <link rel="apple-touch-icon" href="assets/logo-vietthien.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -12,167 +16,222 @@
 </head>
 <body>
   <div class="app-layout">
-    <!-- Thanh trên cùng -->
+    <!-- ================= THANH TRÊN CÙNG ================= -->
     <header class="top-nav">
       <div class="brand">
         <div class="brand-logo brand-logo-img"><img src="assets/logo-vietthien.png" alt="Việt Thiên"></div>
         <div class="brand-info">
           <div class="brand-title">VIỆT THIÊN COFFEE GROUP</div>
-          <div class="brand-subtitle">Hệ Thống Quản Trị Vị Thế Hàng Thực & Phòng Hộ Sàn Phái Sinh</div>
+          <div class="brand-subtitle">Quản trị vị thế hàng thực & phòng hộ sàn phái sinh</div>
         </div>
       </div>
-
       <div class="market-bar">
-        <div class="market-status" id="marketStatus"><span class="pulse-dot"></span><span class="status-text">Đang kết nối sàn London...</span></div>
+        <div class="market-status" id="marketStatus"><span class="pulse-dot"></span><span class="status-text">Đang kết nối…</span></div>
+        <div class="session-info" id="sessionInfo">—</div>
         <div class="live-clock" id="liveClock">00:00:00</div>
       </div>
-
       <div class="nav-actions">
-        <button id="btnAutoRefresh" class="btn-toggle active" title="Tự động cập nhật giá mỗi 15 giây"><span class="icon">⚡</span> Auto: ON</button>
-        <button id="btnRefresh" class="btn btn-secondary" title="Làm mới giá ngay"><span class="icon">🔄</span> Làm mới giá</button>
-        <button id="btnRoll" class="btn btn-outline" title="Chuyển ma trận sang 6 kỳ hạn Robusta kế tiếp"><span class="icon">🔁</span> Chuyển kỳ hạn</button>
-        <button id="btnResetSample" class="btn btn-outline" title="Nạp bộ số liệu mẫu để tập huấn / đối chiếu"><span class="icon">📋</span> Nạp dữ liệu mẫu</button>
-        <button id="btnSaveMatrix" class="btn btn-primary" title="Lưu số liệu vị thế"><span class="icon">💾</span> Lưu vị thế</button>
-        <button id="btnTelegramModal" class="btn btn-outline" title="Cấu hình gửi cảnh báo Telegram"><span class="icon">✈️</span> Bot Telegram</button>
-        <button id="btnExportCsv" class="btn btn-outline" title="Xuất file CSV mở bằng Excel"><span class="icon">📊</span> Xuất Excel</button>
-        <button id="btnAssistant" class="btn btn-assistant" title="Trợ lý: phân tích, hướng dẫn sử dụng, cơ chế tính"><span class="icon">🤖</span> Trợ lý</button>
+        <button id="btnRecheck" class="btn btn-secondary" title="Lấy lại giá ngay từ giacaphe.com và đối chiếu"><span class="icon">🔄</span> Kiểm tra lại giá</button>
+        <button id="btnTelegramModal" class="btn btn-outline" title="Cấu hình bot Telegram"><span class="icon">✈️</span> Telegram</button>
+        <button id="btnAssistant" class="btn btn-assistant" title="Trợ lý: phân tích, hướng dẫn, cơ chế, hỏi đáp"><span class="icon">🤖</span> Trợ lý</button>
       </div>
     </header>
 
-    <!-- Cảnh báo kỳ hạn đã qua -->
+    <nav class="tab-bar" id="tabBar" role="tablist">
+      <button class="tab-btn active" data-tab="overview" role="tab"><span class="tab-ico">📈</span><span class="tab-txt">Tổng quan</span></button>
+      <button class="tab-btn" data-tab="position" role="tab"><span class="tab-ico">📊</span><span class="tab-txt">Vị thế</span></button>
+      <button class="tab-btn" data-tab="hedge" role="tab"><span class="tab-ico">🛡️</span><span class="tab-txt">Phòng hộ</span></button>
+      <button class="tab-btn" data-tab="board" role="tab"><span class="tab-ico">🌐</span><span class="tab-txt">Bảng giá</span></button>
+    </nav>
+
+    <div class="recheck-status" id="recheckStatus" hidden></div>
     <div class="roll-banner" id="rollBanner" hidden>
-      <span>⏰ Ma trận đang có kỳ hạn đã đến tháng giao hàng: <b id="rollBannerCodes"></b>. Bấm <b>🔁 Chuyển kỳ hạn</b> để chuyển sang 6 kỳ hạn mới.</span>
+      <span>⏰ Ma trận đang có kỳ hạn đã đến tháng giao hàng: <b id="rollBannerCodes"></b>. Vào thẻ <b>Vị thế</b> → <b>🔁 Chuyển kỳ hạn</b>.</span>
     </div>
 
-    <!-- Giá sàn & tham chiếu -->
+    <!-- ================= THẺ GIÁ NHANH (mọi trang) ================= -->
     <section class="ticker-section">
       <div class="ticker-grid">
-        <div class="ticker-card">
-          <div class="card-header"><span class="card-badge london">ICE LONDON (ROBUSTA)</span><span class="contract-code" id="robustaCode">—</span></div>
+        <div class="ticker-card" id="cardRobusta">
+          <div class="card-header"><span class="card-badge london">ROBUSTA LONDON</span><span class="contract-code" id="robustaCode">—</span></div>
           <div class="price-display"><div class="current-price" id="robustaPrice">— <span class="unit">USD/tấn</span></div><div class="price-change neutral" id="robustaChange">—</div></div>
-          <div class="price-meta"><span>Cao: <b id="robustaHigh">—</b></span><span>Thấp: <b id="robustaLow">—</b></span><span>Vol: <b id="robustaVol">—</b></span></div>
+          <div class="price-meta"><span>Cao <b id="robustaHigh">—</b></span><span>Thấp <b id="robustaLow">—</b></span><span>Khớp <b id="robustaTime">—</b></span></div>
+        </div>
+        <div class="ticker-card" id="cardArabica">
+          <div class="card-header"><span class="card-badge ny">ARABICA NEW YORK</span><span class="contract-code" id="arabicaCode">—</span></div>
+          <div class="price-display"><div class="current-price" id="arabicaPrice">— <span class="unit">cents/lb</span></div><div class="price-change neutral" id="arabicaChange">—</div></div>
+          <div class="price-meta"><span>Cao <b id="arabicaHigh">—</b></span><span>Thấp <b id="arabicaLow">—</b></span><span>Khớp <b id="arabicaTime">—</b></span></div>
         </div>
         <div class="ticker-card">
-          <div class="card-header"><span class="card-badge ny">ICE NEW YORK (ARABICA)</span><span class="contract-code" id="arabicaCode">—</span></div>
-          <div class="price-display"><div class="current-price" id="arabicaPrice">— <span class="unit">cents/lb</span></div><div class="price-change neutral" id="arabicaChange">—</div></div>
-          <div class="price-meta"><span>Cao: <b id="arabicaHigh">—</b></span><span>Thấp: <b id="arabicaLow">—</b></span><span>Vol: <b id="arabicaVol">—</b></span></div>
+          <div class="card-header"><span class="card-badge fx">TỶ GIÁ VCB</span><span class="contract-code" id="fxSource">Vietcombank</span></div>
+          <div class="price-display"><div class="current-price" id="fxRate">— <span class="unit">VNĐ</span></div><div class="price-change neutral">Mua CK</div></div>
+          <div class="price-meta"><span>Mua TM <b id="fxCash">—</b></span><span>Bán <b id="fxSell">—</b></span></div>
         </div>
         <div class="ticker-card">
           <div class="card-header"><span class="card-badge vn">NHÂN XÔ NỘI ĐỊA</span><button class="ref-edit" id="btnEditDomestic" title="Cập nhật giá tham chiếu">✎ Sửa</button></div>
           <div class="price-display"><div class="current-price" id="domesticPrice">— <span class="unit">VNĐ/kg</span></div><div class="price-change neutral">Nhập tay</div></div>
           <div class="price-meta"><span id="domesticNote">—</span></div>
         </div>
-        <div class="ticker-card">
-          <div class="card-header"><span class="card-badge fx">TỶ GIÁ USD/VND</span><button class="ref-edit" id="btnEditFx" title="Cập nhật tỷ giá">✎ Sửa</button></div>
-          <div class="price-display"><div class="current-price" id="fxRate">— <span class="unit">VNĐ</span></div><div class="price-change neutral">Nhập tay</div></div>
-          <div class="price-meta"><span id="fxNote">—</span></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Spread kỳ hạn -->
-    <section class="spread-ribbon-container">
-      <div class="spread-ribbon">
-        <div class="spread-ribbon-title"><span class="badge-spread">SPREAD KỲ HẠN</span><span>Chênh lệch giá các kỳ hạn London đang theo dõi (kỳ gần − kỳ xa):</span></div>
-        <div class="spread-items" id="spreadItems"></div>
       </div>
     </section>
 
     <main class="main-content">
-      <!-- Ma trận vị thế -->
-      <section class="section-card position-sheet-card">
-        <div class="section-header">
-          <div class="title-wrap">
-            <h2 class="section-title">📊 MA TRẬN VỊ THẾ HÀNG THỰC & PHÒNG HỘ SÀN (POSITION SHEET)</h2>
-            <p class="section-desc">Cân đối hàng thực – tài khoản sàn – hợp đồng trừ lùi theo từng kỳ hạn Robusta London. Mua/Long nhập số dương, Bán/Short nhập số âm.</p>
+      <!-- ================= 1. TỔNG QUAN CHO SẾP ================= -->
+      <section class="tab-panel" data-panel="overview">
+        <div class="exec-grid">
+          <div class="exec-hero" id="execHero">
+            <div class="exec-label">TỔNG VỊ THẾ RÒNG CÔNG TY</div>
+            <div class="exec-value" id="execNet">—</div>
+            <div class="exec-status" id="execStatus">—</div>
+            <div class="exec-sub" id="execSub">—</div>
           </div>
-          <div class="header-tools"><span class="unit-note">Đơn vị: <b>Tấn</b> (1 lot Robusta = 10 tấn) · Cập nhật: <b id="lastSaved">—</b></span></div>
+          <div class="exec-kpi"><div class="exec-label">NẾU GIÁ LONDON BIẾN ĐỘNG</div><div class="exec-kpi-val" id="kpiMtm">—</div><div class="exec-sub" id="kpiMtmSub">—</div></div>
+          <div class="exec-kpi"><div class="exec-label">CẦN PHÒNG HỘ</div><div class="exec-kpi-val" id="kpiHedge">—</div><div class="exec-sub" id="kpiHedgeSub">—</div></div>
+          <div class="exec-kpi"><div class="exec-label">CẤU TRÚC THỊ TRƯỜNG</div><div class="exec-kpi-val" id="kpiMarket">—</div><div class="exec-sub" id="kpiMarketSub">—</div></div>
         </div>
-        <div class="table-responsive">
-          <table class="ldc-matrix-table" id="positionTable">
-            <thead id="positionHead"></thead>
-            <tbody id="positionBody"></tbody>
-          </table>
+
+        <div class="overview-grid">
+          <section class="section-card">
+            <div class="section-header"><div class="title-wrap"><h3 class="section-title">Vị thế ròng theo kỳ hạn (tấn)</h3><p class="section-desc">Cột xanh = dư hàng (Long), cột đỏ = hụt hàng (Short). Vạch đứt = hạn mức cho phép.</p></div></div>
+            <div class="chart-box" id="chartNet"></div>
+            <details class="chart-table"><summary>Xem dạng bảng</summary><div id="chartNetTable"></div></details>
+          </section>
+          <section class="section-card">
+            <div class="section-header"><h3 class="section-title">🤖 Trợ lý tóm tắt</h3><button class="btn btn-outline btn-sm" id="btnOpenAnalysis">Xem phân tích đầy đủ</button></div>
+            <ul class="exec-summary" id="execSummary"></ul>
+            <div class="exec-updated" id="execUpdated"></div>
+          </section>
+        </div>
+
+        <section class="section-card">
+          <div class="section-header">
+            <div class="title-wrap"><h3 class="section-title">Đường cong giá kỳ hạn Robusta & giá FOB HCM (USD/tấn)</h3><p class="section-desc">FOB = giá kỳ hạn + mức trừ lùi (Diff) đang cài ở thẻ Vị thế. Chọn ngày để so sánh đường cong các tuần/tháng trước.</p></div>
+            <div class="chart-controls"><label>So sánh với: <select id="curveCompare1" class="form-control"></select></label><select id="curveCompare2" class="form-control"></select></div>
+          </div>
+          <div class="chart-box" id="chartCurve"></div>
+          <div class="chart-legend" id="curveLegend"></div>
+        </section>
+      </section>
+
+      <!-- ================= 2. MA TRẬN VỊ THẾ ================= -->
+      <section class="tab-panel" data-panel="position" hidden>
+        <div class="panel-toolbar">
+          <button id="btnRoll" class="btn btn-outline" title="Chuyển ma trận sang 6 kỳ hạn Robusta kế tiếp"><span class="icon">🔁</span> Chuyển kỳ hạn</button>
+          <button id="btnResetSample" class="btn btn-outline" title="Nạp bộ số liệu mẫu để tập huấn"><span class="icon">📋</span> Dữ liệu mẫu</button>
+          <button id="btnExportCsv" class="btn btn-outline" title="Xuất file mở bằng Excel"><span class="icon">📊</span> Xuất Excel</button>
+          <button id="btnSaveMatrix" class="btn btn-primary btn-save" title="Lưu số liệu"><span class="icon">💾</span> Lưu vị thế</button>
+        </div>
+
+        <section class="spread-ribbon-container">
+          <div class="spread-ribbon">
+            <div class="spread-ribbon-title"><span class="badge-spread">SPREAD KỲ HẠN</span><span>Kỳ gần − kỳ xa (USD/tấn):</span></div>
+            <div class="spread-items" id="spreadItems"></div>
+          </div>
+        </section>
+
+        <section class="section-card position-sheet-card">
+          <div class="section-header">
+            <div class="title-wrap">
+              <h2 class="section-title">📊 MA TRẬN VỊ THẾ HÀNG THỰC & PHÒNG HỘ SÀN</h2>
+              <p class="section-desc">Mua/Long nhập số dương, Bán/Short nhập số âm. Đơn vị: tấn (1 lot Robusta = 10 tấn).</p>
+            </div>
+            <div class="header-tools"><span class="unit-note">Cập nhật: <b id="lastSaved">—</b></span></div>
+          </div>
+          <div class="table-responsive">
+            <table class="ldc-matrix-table" id="positionTable"><thead id="positionHead"></thead><tbody id="positionBody"></tbody></table>
+          </div>
+        </section>
+
+        <div class="bottom-grid">
+          <section class="section-card calc-card">
+            <div class="section-header"><h3 class="section-title">🧮 TÍNH GIÁ FOB TỪ TRỪ LÙI</h3><span class="badge-tag">Xuất khẩu VN</span></div>
+            <div class="calc-body">
+              <div class="form-row">
+                <div class="form-group"><label>Kỳ hạn London tham chiếu:</label><select id="calcMonthSelect" class="form-control"></select></div>
+                <div class="form-group"><label>Mức trừ lùi / cộng lùi (Diff):</label><div class="input-with-addon"><input type="number" id="calcDiffInput" class="form-control" step="5" inputmode="decimal"><span class="addon">USD/tấn</span></div></div>
+              </div>
+              <div class="form-row">
+                <div class="form-group"><label>Tỷ giá USD/VND: <label class="inline-check"><input type="checkbox" id="calcFxAuto"> theo VCB (mua CK)</label></label><div class="input-with-addon"><input type="number" id="calcFxInput" class="form-control" step="10" inputmode="decimal"><span class="addon">VNĐ</span></div></div>
+                <div class="form-group"><label>Chi phí gia công / bao bì / hao hụt:</label><div class="input-with-addon"><input type="number" id="calcCostInput" class="form-control" step="50" inputmode="decimal"><span class="addon">đ/kg</span></div></div>
+              </div>
+              <div class="calc-result-box">
+                <div class="result-item highlight"><span class="res-label">GIÁ FOB CẢNG TP.HCM:</span><span class="res-value" id="resFobUsd">—</span><span class="res-formula" id="formulaFob"></span></div>
+                <div class="result-item"><span class="res-label">FOB quy đổi (mạn tàu):</span><span class="res-value" id="resFobVnd">—</span></div>
+                <div class="result-item primary"><span class="res-label">Giá nhân xô tương đương tại kho:</span><span class="res-value" id="resDomesticEq">—</span><span class="res-formula">= (FOB × Tỷ giá ÷ 1000) − Chi phí</span></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="section-card advisory-card">
+            <div class="section-header"><h3 class="section-title">🛡️ ĐO LƯỜNG RỦI RO VỊ THẾ</h3><span class="badge-tag alert-tag">Hạn mức rủi ro</span></div>
+            <div class="advisory-body">
+              <div class="risk-overview-grid">
+                <div class="risk-metric"><span class="metric-label">Tổng vị thế ròng:</span><span class="metric-val" id="metricNetExposure">—</span><span class="metric-status" id="metricStatusShort">—</span></div>
+                <div class="risk-metric"><span class="metric-label">Kỳ hạn rủi ro nhất:</span><span class="metric-val" id="metricWorstMonth">—</span><span class="metric-status">Lệch lớn nhất</span></div>
+                <div class="risk-metric"><span class="metric-label">Tác động giá London:</span><span class="metric-val" id="metricMtmPnl">—</span><span class="metric-status" id="metricMtmNote">—</span></div>
+              </div>
+              <div class="advisory-alerts" id="advisoryAlerts"></div>
+              <div class="risk-settings">
+                <label>Hạn mức hở vị thế mỗi kỳ hạn & bước giá kiểm tra:</label>
+                <div class="risk-input-group">
+                  <input type="number" id="riskLimitInput" class="form-control" step="50" inputmode="decimal"><span class="unit">tấn/kỳ hạn</span>
+                  <input type="number" id="priceMoveInput" class="form-control" step="5" inputmode="decimal"><span class="unit">USD/tấn</span>
+                </div>
+              </div>
+            </div>
+          </section>
         </div>
       </section>
 
-      <div class="bottom-grid">
-        <!-- Tính giá FOB -->
-        <section class="section-card calc-card">
-          <div class="section-header"><h3 class="section-title">🧮 CÔNG CỤ TÍNH GIÁ FOB & TRỪ LÙI (DIFF TO FOB)</h3><span class="badge-tag">Xuất khẩu VN</span></div>
-          <div class="calc-body">
-            <div class="form-row">
-              <div class="form-group"><label>Kỳ hạn London tham chiếu:</label><select id="calcMonthSelect" class="form-control"></select></div>
-              <div class="form-group"><label>Mức trừ lùi / cộng lùi (Diff):</label><div class="input-with-addon"><input type="number" id="calcDiffInput" class="form-control" step="5"><span class="addon">USD/tấn</span></div></div>
-            </div>
-            <div class="form-row">
-              <div class="form-group"><label>Tỷ giá USD/VND chuyển khoản:</label><div class="input-with-addon"><input type="number" id="calcFxInput" class="form-control" step="10"><span class="addon">VNĐ</span></div></div>
-              <div class="form-group"><label>Chi phí gia công / bao bì / hao hụt:</label><div class="input-with-addon"><input type="number" id="calcCostInput" class="form-control" step="50"><span class="addon">đ/kg</span></div></div>
-            </div>
-            <div class="calc-result-box">
-              <div class="result-item highlight"><span class="res-label">GIÁ FOB CẢNG TP.HCM:</span><span class="res-value" id="resFobUsd">—</span><span class="res-formula" id="formulaFob"></span></div>
-              <div class="result-item"><span class="res-label">Giá FOB tương đương (mạn tàu):</span><span class="res-value" id="resFobVnd">—</span></div>
-              <div class="result-item primary"><span class="res-label">Giá nhân xô tương đương tại kho:</span><span class="res-value" id="resDomesticEq">—</span><span class="res-formula">= (FOB × Tỷ giá ÷ 1000) − Chi phí</span></div>
-            </div>
-          </div>
-        </section>
-
-        <!-- Đo rủi ro -->
-        <section class="section-card advisory-card">
-          <div class="section-header"><h3 class="section-title">🛡️ ĐO LƯỜNG RỦI RO VỊ THẾ & MARK-TO-MARKET</h3><span class="badge-tag alert-tag">Hạn mức rủi ro</span></div>
-          <div class="advisory-body">
-            <div class="risk-overview-grid">
-              <div class="risk-metric"><span class="metric-label">Tổng vị thế ròng:</span><span class="metric-val" id="metricNetExposure">—</span><span class="metric-status" id="metricStatusShort">—</span></div>
-              <div class="risk-metric"><span class="metric-label">Kỳ hạn rủi ro nhất:</span><span class="metric-val" id="metricWorstMonth">—</span><span class="metric-status">Lệch lớn nhất theo trị tuyệt đối</span></div>
-              <div class="risk-metric"><span class="metric-label">Tác động giá London:</span><span class="metric-val" id="metricMtmPnl">—</span><span class="metric-status" id="metricMtmNote">—</span></div>
-            </div>
-            <div class="advisory-alerts" id="advisoryAlerts"></div>
-            <div class="risk-settings">
-              <label>Hạn mức hở vị thế cho phép mỗi kỳ hạn & bước giá kiểm tra:</label>
-              <div class="risk-input-group">
-                <input type="number" id="riskLimitInput" class="form-control" step="50"><span class="unit">tấn/kỳ hạn</span>
-                <input type="number" id="priceMoveInput" class="form-control" step="5"><span class="unit">USD/tấn</span>
-                <span class="tag-auto">Tự cảnh báo khi vượt</span>
-              </div>
-            </div>
-          </div>
-        </section>
-      </div>
-
-      <!-- Bảng giá sàn -->
-      <section class="section-card contracts-card">
-        <div class="section-header">
-          <div class="title-wrap"><h3 class="section-title">🌐 BẢNG GIÁ SÀN KỲ HẠN (ICE LONDON & ICE NEW YORK)</h3><p class="section-desc">Nguồn: giacaphe.com – cập nhật theo phiên giao dịch</p></div>
-          <span class="badge-tag live-tag" id="quotesUpdatedTime">Cập nhật: —</span>
+      <!-- ================= 3. MÔ HÌNH PHÒNG HỘ ================= -->
+      <section class="tab-panel" data-panel="hedge" hidden>
+        <div class="panel-toolbar">
+          <button id="btnHedgeFromMarket" class="btn btn-outline" title="Điền giá sàn hiện tại vào mô hình"><span class="icon">⬇️</span> Lấy giá sàn hiện tại</button>
+          <button class="btn btn-primary btn-save" data-save><span class="icon">💾</span> Lưu</button>
         </div>
-        <div class="contracts-grid">
-          <div class="contract-subtable">
-            <h4 class="table-subtitle">ROBUSTA (ICE FUTURES EUROPE – LONDON) – USD/tấn</h4>
-            <table class="quotes-mini-table"><thead><tr><th>Kỳ hạn</th><th>Mã HĐ</th><th>Giá khớp</th><th>Thay đổi</th><th>%</th><th>Cao</th><th>Thấp</th><th>KL</th></tr></thead><tbody id="tbodyRobusta"></tbody></table>
+        <section class="section-card">
+          <div class="section-header"><div class="title-wrap"><h3 class="section-title">I. THÔNG SỐ ĐẦU VÀO (ô vàng = nhập liệu)</h3><p class="section-desc">Mô hình tính phòng hộ xuất khẩu Robusta sàn ICE EU. Đã trừ phí giao dịch MXV/ICE 2 chiều và phí quyền chọn.</p></div></div>
+          <div class="hedge-inputs" id="hedgeInputs"></div>
+          <div class="hedge-derived" id="hedgeDerived"></div>
+        </section>
+        <section class="section-card">
+          <div class="section-header"><h3 class="section-title">II. SO SÁNH 4 CHIẾN LƯỢC PHÒNG HỘ</h3><span class="badge-tag">Chọn 1 trong 4</span></div>
+          <div class="table-scroll"><table class="data-table" id="hedgeCompare"></table></div>
+        </section>
+        <section class="section-card">
+          <div class="section-header"><div class="title-wrap"><h3 class="section-title">III. KỊCH BẢN KHI THỊ TRƯỜNG THAY ĐỔI – DOANH THU THỰC NHẬN (USD/tấn, đã trừ phí)</h3><p class="section-desc">Giá ICE London lúc đáo hạn = F0 × (1 ± biến động). Ô xanh = chiến lược tốt nhất ở kịch bản đó.</p></div></div>
+          <div class="table-scroll"><table class="data-table" id="hedgeScenarios"></table></div>
+        </section>
+      </section>
+
+      <!-- ================= 4. BẢNG GIÁ TRỰC TUYẾN ================= -->
+      <section class="tab-panel" data-panel="board" hidden>
+        <section class="section-card">
+          <div class="section-header">
+            <div class="title-wrap"><h3 class="section-title">🌐 GIÁ CÀ PHÊ TRỰC TUYẾN SÀN LONDON, NEW YORK, BMF-BRAZIL</h3><p class="section-desc" id="boardSource">Nguồn: giacaphe.com</p></div>
+            <div class="board-tools"><a class="btn btn-outline btn-sm" href="https://giacaphe.com/gia-ca-phe-truc-tuyen/" target="_blank" rel="noopener">Mở trang nguồn ↗</a><button class="btn btn-secondary btn-sm" data-recheck>🔄 Kiểm tra lại giá</button></div>
           </div>
-          <div class="contract-subtable">
-            <h4 class="table-subtitle">ARABICA (ICE FUTURES U.S. – NEW YORK) – cents/lb</h4>
-            <table class="quotes-mini-table"><thead><tr><th>Kỳ hạn</th><th>Mã HĐ</th><th>Giá khớp</th><th>Thay đổi</th><th>%</th><th>Cao</th><th>Thấp</th><th>KL</th></tr></thead><tbody id="tbodyArabica"></tbody></table>
-          </div>
-        </div>
+          <div id="boardTables"></div>
+          <p class="section-desc board-note">Ngày thông báo đầu tiên là ước tính (Robusta: 4 ngày làm việc, Arabica: 7 ngày làm việc trước ngày làm việc đầu tiên của tháng giao hàng; chưa trừ ngày lễ). Nên đảo/đóng vị thế trước ngày này.</p>
+        </section>
       </section>
     </main>
 
     <footer class="app-footer">
-      <div class="footer-left"><span>© 2026 <b>Việt Thiên Coffee Group</b></span><span class="dot">•</span><span>Phòng Kinh doanh Xuất khẩu – Hệ thống quản trị vị thế & rủi ro giá</span></div>
-      <div class="footer-right"><span id="footerConnection">Kết nối API: <b>—</b></span></div>
+      <div class="footer-left"><span>© 2026 <b>Việt Thiên Coffee Group</b></span><span class="dot">•</span><span>Phòng Kinh doanh Xuất khẩu</span></div>
+      <div class="footer-right"><span id="footerConnection">Kết nối: <b>—</b></span></div>
     </footer>
   </div>
 
-  <!-- Cấu hình Telegram -->
+  <!-- Telegram -->
   <div class="modal-overlay" id="telegramModal">
     <div class="modal-box">
       <div class="modal-header"><div class="modal-title">✈️ CẤU HÌNH BOT TELEGRAM</div><button class="modal-close" id="btnCloseTelegramModal">&times;</button></div>
       <div class="modal-body">
-        <p class="modal-intro">Nhận cảnh báo khi giá London biến động mạnh và tra cứu vị thế bằng lệnh <code>/gia</code>, <code>/vithe</code>, <code>/spread</code>, <code>/fob</code>, <code>/tuvan</code>.</p>
+        <p class="modal-intro">Cảnh báo khi giá London biến động mạnh và tra cứu bằng lệnh <code>/gia</code>, <code>/vithe</code>, <code>/spread</code>, <code>/fob</code>, <code>/tuvan</code>.</p>
         <div class="form-group"><label>1. Kích hoạt bot:</label><div class="toggle-wrap"><input type="checkbox" id="tgEnabled" class="checkbox-custom"><label for="tgEnabled" style="font-weight:600;cursor:pointer;">Bật cảnh báo & lệnh chat</label></div></div>
-        <div class="form-group"><label>2. Bot Token (từ @BotFather):</label><input type="text" id="tgBotToken" class="form-control" autocomplete="off"><small class="form-hint" id="tgTokenHint">Chat với <b>@BotFather</b>, gõ <code>/newbot</code> để lấy Token.</small></div>
-        <div class="form-group"><label>3. Chat ID / Group ID:</label><input type="text" id="tgChatId" class="form-control" placeholder="Ví dụ: 123456789 hoặc -1001234567890"><small class="form-hint">Chat với <b>@userinfobot</b> để lấy ID.</small></div>
+        <div class="form-group"><label>2. Bot Token (từ @BotFather):</label><input type="text" id="tgBotToken" class="form-control" autocomplete="off"></div>
+        <div class="form-group"><label>3. Chat ID / Group ID:</label><input type="text" id="tgChatId" class="form-control" placeholder="Ví dụ: 123456789 hoặc -1001234567890"></div>
         <div class="form-group"><label>4. Ngưỡng cảnh báo biến động London:</label><div class="input-with-addon"><input type="number" id="tgThreshold" class="form-control" step="5"><span class="addon">USD/tấn</span></div></div>
         <div class="modal-status" id="tgStatus"></div>
       </div>
@@ -188,15 +247,17 @@
     </div>
     <div class="assistant-tabs" id="assistantTabs">
       <button class="assistant-tab active" data-tab="analysis">Phân tích</button>
-      <button class="assistant-tab" data-tab="guide">Cách sử dụng</button>
+      <button class="assistant-tab" data-tab="guide">Cách dùng</button>
       <button class="assistant-tab" data-tab="mechanism">Cơ chế</button>
       <button class="assistant-tab" data-tab="faq">Hỏi đáp</button>
     </div>
     <div class="assistant-body" id="assistantBody"></div>
   </aside>
+  <div class="chart-tooltip" id="chartTooltip" hidden></div>
 
   <script src="engine.js"></script>
   <script src="assistant.js"></script>
+  <script src="charts.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

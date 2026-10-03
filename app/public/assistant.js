@@ -61,26 +61,15 @@
 
   // ---------- 2. Cách sử dụng ----------
   const GUIDE = `
-    <h4>Khởi động</h4><ol class="as-list">
-      <li>Nháy đúp <b>CHAY_HE_THONG.bat</b> → trình duyệt tự mở <b>http://localhost:3456</b>.</li>
-      <li>Muốn tắt: nháy đúp <b>DUNG_HE_THONG.bat</b>.</li></ol>
-    <h4>Cập nhật vị thế hằng ngày</h4><ol class="as-list">
-      <li>Nhập số tấn vào ô theo từng <b>kỳ hạn</b> (cột). <b>Mua/Long nhập dương, Bán/Short nhập âm.</b></li>
-      <li>Tồn kho: hàng đang có trong kho (không gồm hàng gởi).</li>
-      <li>Hợp đồng đã chốt giá: nhập vào dòng “đã chốt giá”. Hợp đồng trừ lùi chưa chốt: nhập vào khối <b>Trừ lùi</b>.</li>
-      <li>Lệnh sàn đã khớp (HD Bank / PFS092): nhập theo tấn (1 lot = 10 t; bán short = âm).</li>
-      <li>Bấm <b>💾 Lưu vị thế</b>. Nút có dấu “•” nghĩa là còn thay đổi chưa lưu.</li></ol>
-    <h4>Đọc kết quả</h4><ol class="as-list">
-      <li><b>Dòng vàng – Tổng vị thế ròng</b>: âm = Short (hụt hàng, sợ giá tăng), dương = Long (dư hàng, sợ giá giảm).</li>
-      <li>Khối <b>Đo lường rủi ro</b>: kỳ hạn lệch nhiều nhất, lời/lỗ khi London biến động, khuyến nghị số lot cần phòng hộ khi vượt hạn mức.</li>
-      <li><b>Công cụ FOB</b>: chọn kỳ hạn London, nhập Diff → ra giá FOB USD/tấn, VNĐ/kg và giá nội địa tương đương.</li></ol>
-    <h4>Việc định kỳ</h4><ol class="as-list">
-      <li>Khi kỳ hạn đầu tiên đến tháng giao hàng: bấm <b>🔁 Chuyển kỳ hạn</b> (hệ thống cảnh báo số liệu bị loại).</li>
-      <li>Cập nhật <b>giá nhân xô</b> và <b>tỷ giá</b> bằng nút ✎ Sửa trên thẻ tham chiếu.</li>
-      <li>Cuối ngày: <b>📊 Xuất Excel</b> để lưu báo cáo.</li></ol>
-    <h4>Bot Telegram</h4><ol class="as-list">
-      <li>Bấm ✈️ Bot Telegram → dán Token (@BotFather) và Chat ID → Lưu → Gửi thử.</li>
-      <li>Lệnh: <code>/gia</code>, <code>/vithe</code>, <code>/spread</code>, <code>/fob</code>, <code>/tuvan</code>.</li></ol>`;
+    <h4>Khởi động</h4><ol class="as-list"><li>Nháy đúp <b>CHAY_HE_THONG.bat</b> → mở <b>http://localhost:3456</b>. Điện thoại cùng Wi‑Fi: <b>http://&lt;IP máy chạy&gt;:3456</b>.</li><li>Tắt: <b>DUNG_HE_THONG.bat</b>.</li></ol>
+    <h4>4 thẻ chính</h4><ol class="as-list">
+      <li><b>📈 Tổng quan</b> (dành cho sếp): tổng vị thế ròng, lời/lỗ khi giá biến động, số lot cần phòng hộ, biểu đồ vị thế theo kỳ hạn, tóm tắt của trợ lý, đường cong giá kỳ hạn & FOB so với các tuần/tháng trước.</li>
+      <li><b>📊 Vị thế</b>: nhập ma trận (Mua/Long dương, Bán/Short âm) → <b>💾 Lưu vị thế</b>. Có công cụ tính FOB từ trừ lùi và hạn mức rủi ro.</li>
+      <li><b>🛡️ Phòng hộ</b>: bấm <b>⬇️ Lấy giá sàn hiện tại</b>, chỉnh khối lượng/Put/Call/phí → so sánh 4 chiến lược (Futures, Long Put, Collar, Hybrid) và 5 kịch bản giá.</li>
+      <li><b>🌐 Bảng giá</b>: giá Robusta London, Arabica New York, Brazil từ giacaphe.com – giá khớp, thay đổi, cao/thấp, khối lượng, mở cửa, hôm trước, HĐ mở, giờ khớp, ngày thông báo đầu tiên.</li></ol>
+    <h4>Giá thời gian thực</h4><ol class="as-list"><li>Hệ thống tự lấy giá giacaphe.com mỗi 5 giây và đẩy ngay xuống mọi màn hình đang mở (ô giá nháy xanh/đỏ khi đổi).</li><li>Nghi ngờ giá lệch: bấm <b>🔄 Kiểm tra lại giá</b> – hệ thống lấy lại ngay từ trang nguồn và báo khớp hay có giá mới.</li><li>Tỷ giá lấy tự động từ Vietcombank (30 phút/lần); giá nhân xô nhập tay (✎ Sửa).</li></ol>
+    <h4>Việc định kỳ</h4><ol class="as-list"><li>Cuối ngày: <b>📊 Xuất Excel</b> ở thẻ Vị thế.</li><li>Khi kỳ đầu đến tháng giao hàng: <b>🔁 Chuyển kỳ hạn</b>.</li><li>Theo dõi cảnh báo <b>ngày thông báo đầu tiên</b> để đảo vị thế sàn kịp thời.</li></ol>
+    <h4>Bot Telegram</h4><ol class="as-list"><li>✈️ Telegram → Token + Chat ID → Lưu → Gửi thử. Lệnh: <code>/gia</code> <code>/vithe</code> <code>/spread</code> <code>/fob</code> <code>/tuvan</code>.</li></ol>`;
 
   // ---------- 3. Cơ chế ----------
   const MECH = `
@@ -136,7 +125,36 @@
       $('asSearch').addEventListener('input', e => { $('asFaqList').innerHTML = faqList(e.target.value); });
     }
   }
-  function open() { $('assistantDrawer').classList.add('open'); $('assistantDrawer').setAttribute('aria-hidden', 'false'); render(); }
+  function open(tab) {
+    if (tab) { currentTab = tab; document.querySelectorAll('.assistant-tab').forEach(x => x.classList.toggle('active', x.dataset.tab === tab)); }
+    $('assistantDrawer').classList.add('open'); $('assistantDrawer').setAttribute('aria-hidden', 'false'); render();
+  }
+
+  // ---------- Tóm tắt ngắn cho sếp (trang Tổng quan) ----------
+  function summary(st) {
+    if (!st) return [];
+    const d = st.data; const pos = E.computePositions(d);
+    const risk = E.analyzeRisk(pos, { limit: d.riskLimit, priceMove: d.priceMoveUsd }); const t = pos.totals.net; const out = [];
+    if (t < 0) out.push(`Công ty đang <b>SHORT ${fmt(Math.abs(t), 1)} tấn</b> (bán nhiều hơn hàng đang có). London tăng ${fmt(risk.move, 0)}$/tấn thì <b>lỗ khoảng ${fmt(Math.abs(risk.mtmUp), 0)} USD</b>.`);
+    else if (t > 0) out.push(`Công ty đang <b>LONG ${fmt(t, 1)} tấn</b> (hàng chưa bán/chưa chốt giá). London giảm ${fmt(risk.move, 0)}$/tấn thì <b>lỗ khoảng ${fmt(Math.abs(risk.mtmUp), 0)} USD</b>.`);
+    else out.push('Vị thế ròng <b>cân bằng</b> – biến động giá London ít ảnh hưởng tới lợi nhuận.');
+    if (risk.worstIdx >= 0 && risk.worstValue !== 0) out.push(`Rủi ro tập trung nhiều nhất ở <b>${E.contractLabel(pos.columns[risk.worstIdx])}</b> (${E.signed(risk.worstValue, 1)} t).`);
+    const hedges = risk.alerts.filter(a => a.type === 'hedge');
+    out.push(hedges.length ? `🛡️ Đề xuất phòng hộ: ${hedges.map(a => `<b>${a.action} ${a.lots} lot ${a.code}</b>`).join(', ')}.` : `✅ Không kỳ hạn nào vượt hạn mức ${fmt(risk.limit, 0)} tấn – chưa cần phòng hộ thêm.`);
+    if (risk.alerts.some(a => a.type === 'mismatch')) out.push('⚠️ Có kỳ dư và kỳ hụt cùng lúc – cân nhắc giao dịch spread hoặc dời lịch giao hàng.');
+    const sp = E.computeSpreads(d.columns, st.quotes).filter(s => s.value !== null);
+    const front = ((st.quotes || {}).coffee_liffe || [])[0];
+    if (front) out.push(`Robusta ${front.Name}: <b>${fmt(front.Last, 0)} USD/t</b> (${E.signed(front.Change)} | ${front.PtcChange}%). ${sp.length ? (sp.filter(s => s.structure === 'Inverted').length > sp.length / 2 ? 'Thị trường <b>nghịch đảo</b>: nên ưu tiên bán/giao sớm.' : 'Thị trường <b>bình thường</b>: giữ hàng ít bị thiệt.') : ''}`);
+    // Ngày thông báo đầu tiên sắp tới (≤ 15 ngày)
+    const today = new Date();
+    ((st.quotes || {}).coffee_liffe || []).forEach(q => {
+      const f = E.firstNoticeDay(q.Name); if (!f) return; const left = E.daysBetween(today, f);
+      if (left >= 0 && left <= 15) out.push(`⏰ <b>${E.mxvCode(q.Name)}</b> đến ngày thông báo đầu tiên ${f.getDate()}/${f.getMonth() + 1} (còn ${left} ngày) – đóng/đảo vị thế sàn kỳ này trước hạn.`);
+    });
+    if (st.dirty) out.push('💾 Có thay đổi chưa lưu.');
+    if (d.columns.some(c => E.isExpired(c))) out.push('⏰ Ma trận có kỳ hạn đã đến tháng giao hàng – cần Chuyển kỳ hạn.');
+    return out;
+  }
   function close() { $('assistantDrawer').classList.remove('open'); $('assistantDrawer').setAttribute('aria-hidden', 'true'); }
 
   window.VTAssistant = {
@@ -153,6 +171,7 @@
       document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
       if (location.hash === '#tro-ly') setTimeout(open, 300); // mở thẳng trợ lý: http://localhost:3456/#tro-ly
     },
-    refresh() { if (currentTab === 'analysis' && $('assistantDrawer').classList.contains('open')) render(); }
+    refresh() { if (currentTab === 'analysis' && $('assistantDrawer').classList.contains('open')) render(); },
+    open, summary
   };
 })();
