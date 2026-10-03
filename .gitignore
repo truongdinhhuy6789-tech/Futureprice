@@ -1,0 +1,11 @@
+# Dữ liệu kinh doanh & bí mật — KHÔNG đưa lên GitHub
+app/data/
+*.log
+*.tmp
+
+# Hệ điều hành / công cụ
+Thumbs.db
+desktop.ini
+.DS_Store
+node_modules/
+~$*
