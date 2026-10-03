@@ -137,6 +137,19 @@
     out.reference = { ...base.reference, ...(raw.reference || {}) };
     out.riskLimit = pick(raw.riskLimit, base.riskLimit);
     out.priceMoveUsd = pick(raw.priceMoveUsd, base.priceMoveUsd);
+    out.contracts = Array.isArray(raw.contracts) ? raw.contracts.map(normalizeContract) : [];
+    // Lần đầu có Sổ hợp đồng: số nhập tay ở 6 dòng hợp đồng chuyển thành "số dư đầu kỳ" trong sổ (không mất số)
+    if (!Array.isArray(raw.contracts)) CONTRACT_ROWS.forEach(k => columns.forEach(c => {
+      const v = out.matrix[k][c]; if (!v) return;
+      out.contracts.push(openingContract(k, c, v, out.contracts.length)); out.matrix[k][c] = 0;
+    }));
+    out.trades = Array.isArray(raw.trades) ? raw.trades.map(normalizeTrade) : [];
+    // Lần đầu có sổ lệnh sàn: số tay ở 2 dòng Robusta sàn → lệnh "đầu kỳ" (giữ nguyên số tấn; Arabica vẫn nhập tay)
+    if (!Array.isArray(raw.trades)) Object.entries(TRADE_ROWS).forEach(([acc, k]) => columns.forEach(c => {
+      const v = out.matrix[k][c]; if (!v) return;
+      out.trades.push(normalizeTrade({ id: `open_${k}_${c}`, account: acc, side: v > 0 ? 'buy' : 'sell', lots: Math.abs(v) / LOT_TONNES, month: c, price: 0, note: 'Số dư đầu kỳ chuyển từ ma trận' }, out.trades.length));
+      out.matrix[k][c] = 0;
+    }));
     return out;
   }
   // Chuyển sang 6 kỳ hạn mới; trả về các kỳ hạn bị loại mà vẫn còn số liệu (để cảnh báo)
@@ -151,9 +164,170 @@
     return { data: { ...data, columns: newCols, matrix }, dropped };
   }
 
+  // ---------- Sổ hợp đồng hàng thực ----------
+  // Mỗi hợp đồng mua/bán đổ vào 6 dòng hợp đồng của ma trận, ở cột kỳ hạn sàn tham chiếu (basis):
+  //   đã chốt giá chưa giao → *_fixed_unshipped · đã giao chưa chốt → *_unfixed_shipped · chưa chốt chưa giao → diff_*_unfixed
+  //   đã chốt và đã giao → hoàn tất (hàng mua đã vào kho / hàng bán đã xuất: cập nhật dòng Tồn kho)
+  const CONTRACT_ROWS = ['buy_fixed_unshipped', 'buy_unfixed_shipped', 'sell_fixed_unshipped', 'sell_unfixed_shipped', 'diff_buy_unfixed', 'diff_sell_unfixed'];
+  const CONTAINER_TONNES = 19.2; // container 20' = 320 bao × 60 kg
+  const isDate = s => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));
+  const sumTons = arr => round2((arr || []).reduce((s, x) => s + num(x.tons), 0));
+  const codeIndex = code => { const p = parseCode(code); return p ? p.year * 12 + p.month : null; };
+  // Kỳ hạn sàn tham chiếu mặc định = kỳ Robusta đầu tiên SAU tháng giao hàng (giao 01/2027 → H27, giao 11/2026 → F27)
+  function basisForShipment(ship) {
+    const m = /^(\d{4})-(\d{2})$/.exec(String(ship || '')); if (!m) return '';
+    return nextContracts(new Date(Number(m[1]), Number(m[2]) - 1, 15), 1)[0];
+  }
+  function normalizeContract(c, i) {
+    const x = c && typeof c === 'object' ? c : {};
+    const list = (arr, f) => (Array.isArray(arr) ? arr : []).map(f).filter(e => e.tons > 0);
+    const basis = String(x.basis || '').toUpperCase();
+    const ship = /^\d{4}-\d{2}$/.test(String(x.ship || '')) ? x.ship : '';
+    return {
+      id: String(x.id || `c${Date.now().toString(36)}_${i || 0}`).slice(0, 40),
+      no: String(x.no || '').trim().slice(0, 40), date: isDate(x.date) ? x.date : '',
+      side: x.side === 'buy' ? 'buy' : 'sell', party: String(x.party || '').trim().slice(0, 80), grade: String(x.grade || '').trim().slice(0, 60),
+      qty: Math.max(0, round2(num(x.qty))), pricing: x.pricing === 'diff' ? 'diff' : 'fixed',
+      price: num(x.price), unit: x.unit === 'vnd' ? 'vnd' : 'usd', diff: num(x.diff),
+      basis: parseCode(basis) ? basis : basisForShipment(ship), ship, terms: String(x.terms || '').trim().slice(0, 20) || 'FOB',
+      fixes: list(x.fixes, f => ({ date: isDate(f && f.date) ? f.date : '', tons: round2(num(f && f.tons)), fut: num(f && f.fut) })),
+      deliveries: list(x.deliveries, f => ({ date: isDate(f && f.date) ? f.date : '', tons: round2(num(f && f.tons)) })),
+      note: String(x.note || '').slice(0, 300)
+    };
+  }
+  // Số nhập tay cũ ở 6 dòng hợp đồng → "số dư đầu kỳ" trong sổ (giữ nguyên số và dấu)
+  function openingContract(key, col, v, i) {
+    const unfixed = /unfixed/.test(key), shipped = /_shipped$/.test(key);
+    const row = ROWS.find(r => r.key === key) || {};
+    return normalizeContract({ id: `open_${key}_${col}`, no: 'ĐẦU KỲ', party: 'Số dư chuyển từ ma trận', side: v > 0 ? 'buy' : 'sell', qty: Math.abs(v),
+      pricing: unfixed ? 'diff' : 'fixed', basis: col, deliveries: shipped ? [{ tons: Math.abs(v) }] : [], note: `Chuyển từ dòng "${row.label}" kỳ ${col}` }, i);
+  }
+  function contractState(c) {
+    const qty = num(c.qty);
+    const fixTons = sumTons(c.fixes);
+    const fixedT = c.pricing === 'fixed' ? qty : Math.min(qty, fixTons);
+    const deliveredT = Math.min(qty, sumTons(c.deliveries));
+    const fs = Math.min(fixedT, deliveredT);                       // đã chốt & đã giao → hoàn tất
+    const fu = round2(fixedT - fs), us = round2(deliveredT - fs), uu = round2(qty - fixedT - us);
+    const avgFix = c.pricing === 'diff' && fixTons > 0 ? round2(c.fixes.reduce((s, f) => s + num(f.tons) * num(f.fut), 0) / fixTons) : null;
+    const priceUsd = c.pricing === 'fixed' ? (c.unit === 'usd' ? num(c.price) : null) : (avgFix === null ? null : round2(avgFix + num(c.diff)));
+    const fixStatus = fixedT >= qty - 1e-6 ? 'fixed' : fixedT > 0 ? 'partial' : 'open';
+    const delStatus = deliveredT >= qty - 1e-6 ? 'done' : deliveredT > 0 ? 'partial' : 'none';
+    return { qty, fixedT: round2(fixedT), unfixedT: round2(qty - fixedT), deliveredT: round2(deliveredT), fs: round2(fs), fu, us, uu, avgFix, priceUsd,
+      fixStatus, delStatus, closed: qty === 0 || (fixStatus === 'fixed' && delStatus === 'done'), lots: round2(qty / LOT_TONNES), containers: round2(qty / CONTAINER_TONNES) };
+  }
+  // Cộng sổ hợp đồng thành 6 dòng của ma trận. Kỳ tham chiếu đã qua / ngoài 6 kỳ đang hiển thị → ghép vào kỳ gần nhất (không để "mất" rủi ro)
+  function contractRows(contracts, columns) {
+    const rows = {}; CONTRACT_ROWS.forEach(k => { rows[k] = {}; columns.forEach(c => { rows[k][c] = 0; }); });
+    const moved = [];
+    const add = (k, col, v) => { if (v) rows[k][col] = round2(rows[k][col] + v) || 0; };
+    (contracts || []).forEach(c => {
+      const s = contractState(c); if (s.closed || !columns.length) return;
+      let col = c.basis;
+      if (!columns.includes(col)) {
+        const idx = codeIndex(col); const late = idx !== null && idx > codeIndex(columns[columns.length - 1]);
+        col = late ? columns[columns.length - 1] : columns[0];
+        moved.push({ id: c.id, no: c.no, basis: c.basis, to: col, expired: !late });
+      }
+      const sign = c.side === 'buy' ? 1 : -1; const p = c.side === 'buy' ? 'buy' : 'sell';
+      add(`${p}_fixed_unshipped`, col, sign * s.fu); add(`${p}_unfixed_shipped`, col, sign * s.us); add(`diff_${p}_unfixed`, col, sign * s.uu);
+    });
+    return { rows, moved };
+  }
+  // ---------- Lệnh sàn (hàng ảo) – Robusta London ----------
+  // Mỗi lệnh MUA (+) / BÁN (−) n lot ở một kỳ hạn → dòng "Vị thế Robusta sàn HD Bank / PFS092" của ma trận (1 lot = 10 t).
+  // Lệnh có thể liên kết (link) với một hợp đồng hàng thật để theo dõi hợp đồng nào đã được phòng hộ.
+  const TRADE_ROWS = { hdbank: 'hedge_robusta_hdbank', pfs: 'hedge_robusta_pfs' };
+  const ACCOUNTS = { hdbank: 'HD Bank', pfs: 'PFS092' };
+  function normalizeTrade(t, i) {
+    const x = t && typeof t === 'object' ? t : {};
+    const month = String(x.month || '').toUpperCase();
+    return {
+      id: String(x.id || `t${Date.now().toString(36)}_${i || 0}`).slice(0, 40),
+      date: isDate(x.date) ? x.date : '', account: x.account === 'pfs' ? 'pfs' : 'hdbank', side: x.side === 'sell' ? 'sell' : 'buy',
+      lots: Math.max(0, round2(num(x.lots))), month: parseCode(month) ? month : '', price: num(x.price),
+      link: String(x.link || '').slice(0, 40), note: String(x.note || '').slice(0, 200)
+    };
+  }
+  const tradeLots = t => (t.side === 'sell' ? -1 : 1) * num(t.lots);
+  function tradeRows(trades, columns) {
+    const rows = {}; Object.values(TRADE_ROWS).forEach(k => { rows[k] = {}; columns.forEach(c => { rows[k][c] = 0; }); });
+    const moved = [];
+    (trades || []).forEach(t => {
+      if (!num(t.lots) || !columns.length) return;
+      let col = t.month;
+      if (!columns.includes(col)) {
+        const idx = codeIndex(col); const late = idx !== null && idx > codeIndex(columns[columns.length - 1]);
+        col = late ? columns[columns.length - 1] : columns[0];
+        moved.push({ id: t.id, month: t.month, to: col, expired: !late });
+      }
+      const k = TRADE_ROWS[t.account] || TRADE_ROWS.hdbank;
+      rows[k][col] = round2(rows[k][col] + tradeLots(t) * LOT_TONNES) || 0;
+    });
+    return { rows, moved };
+  }
+  // Sổ lệnh theo từng tài khoản + kỳ hạn, giá vốn bình quân: lãi/lỗ đã chốt (đóng lệnh) và đang mở (theo giá hiện tại)
+  function futuresBook(trades, priceOf) {
+    const groups = {};
+    (trades || []).slice().sort((a, b) => String(a.date).localeCompare(String(b.date))).forEach(t => {
+      const q = tradeLots(t); if (!q) return;
+      const k = `${t.account}|${t.month}`;
+      const g = groups[k] || (groups[k] = { account: t.account, month: t.month, pos: 0, avg: 0, realized: 0, priced: true });
+      if (!num(t.price)) g.priced = false; // số dư đầu kỳ chưa có giá khớp
+      if (Math.abs(g.pos) < 1e-9 || Math.sign(q) === Math.sign(g.pos)) {
+        g.avg = (g.avg * Math.abs(g.pos) + num(t.price) * Math.abs(q)) / (Math.abs(g.pos) + Math.abs(q)); g.pos += q;
+      } else {
+        const close = Math.min(Math.abs(q), Math.abs(g.pos));
+        g.realized += (num(t.price) - g.avg) * close * LOT_TONNES * Math.sign(g.pos);
+        const flip = Math.abs(q) > Math.abs(g.pos); g.pos += q;
+        if (flip) g.avg = num(t.price);
+      }
+      if (Math.abs(g.pos) < 1e-9) { g.pos = 0; g.avg = 0; }
+    });
+    const list = Object.values(groups).map(g => {
+      const last = num(priceOf ? priceOf(g.month) : 0);
+      return { account: g.account, month: g.month, pos: round2(g.pos) || 0, avg: round2(g.avg), realized: Math.round(g.realized) || 0, last,
+        unrealized: last && g.pos && g.priced ? Math.round((last - g.avg) * g.pos * LOT_TONNES) || 0 : null };
+    }).sort((a, b) => (codeIndex(a.month) || 0) - (codeIndex(b.month) || 0) || a.account.localeCompare(b.account));
+    return { list, totals: { lots: round2(list.reduce((s, g) => s + g.pos, 0)) || 0, realized: list.reduce((s, g) => s + g.realized, 0), unrealized: list.reduce((s, g) => s + (g.unrealized || 0), 0) } };
+  }
+  // Số lot đang liên kết với một hợp đồng (MUA +, BÁN −)
+  function linkedLots(trades, contractId) { return round2((trades || []).filter(t => t.link === contractId).reduce((s, t) => s + tradeLots(t), 0)) || 0; }
+  // Hợp đồng đổ vào vị thế ròng bao nhiêu tấn (MUA +, BÁN −; hoàn tất = 0)
+  function contractExposure(c) { const s = contractState(c); return s.closed ? 0 : round2((c.side === 'buy' ? 1 : -1) * (s.fu + s.us + s.uu)) || 0; }
+
+  // Ma trận dùng để tính = số nhập tay + số từ sổ hợp đồng (hàng thật) + sổ lệnh sàn (hàng ảo)
+  function effectiveMatrix(data) {
+    const base = data.matrix || {}; const cols = data.columns || [];
+    const hasC = Array.isArray(data.contracts) && data.contracts.length, hasT = Array.isArray(data.trades) && data.trades.length;
+    if (!hasC && !hasT) return base;
+    const m = {}; ROWS.forEach(r => { m[r.key] = { ...(base[r.key] || {}) }; });
+    const addRows = rows => Object.keys(rows).forEach(k => cols.forEach(c => { m[k][c] = round2(num(m[k][c]) + rows[k][c]) || 0; }));
+    if (hasC) addRows(contractRows(data.contracts, cols).rows);
+    if (hasT) addRows(tradeRows(data.trades, cols).rows);
+    return m;
+  }
+  // Hạn chốt giá hợp đồng trừ lùi = ngày thông báo đầu tiên của kỳ hạn sàn tham chiếu (ước tính)
+  function fixDeadline(c) { return parseCode(c.basis) ? firstNoticeDay('RM' + c.basis) : null; }
+  function contractSummary(contracts, today) {
+    const o = { count: 0, open: 0, sellUnfixedT: 0, buyUnfixedT: 0, sellUndeliveredT: 0, buyUndeliveredT: 0, netEffect: 0, due: [] };
+    (contracts || []).forEach(c => {
+      const s = contractState(c); o.count += 1; if (s.closed) return; o.open += 1;
+      const buy = c.side === 'buy';
+      o[buy ? 'buyUnfixedT' : 'sellUnfixedT'] += s.unfixedT;
+      o[buy ? 'buyUndeliveredT' : 'sellUndeliveredT'] += s.qty - s.deliveredT;
+      o.netEffect += (buy ? 1 : -1) * (s.fu + s.us + s.uu);
+      const f = c.pricing === 'diff' && s.unfixedT > 0 ? fixDeadline(c) : null;
+      if (f) o.due.push({ id: c.id, no: c.no, side: c.side, party: c.party, unfixedT: s.unfixedT, basis: c.basis, fnd: f, left: daysBetween(today || new Date(), f) });
+    });
+    ['sellUnfixedT', 'buyUnfixedT', 'sellUndeliveredT', 'buyUndeliveredT', 'netEffect'].forEach(k => { o[k] = round2(o[k]) || 0; });
+    o.due.sort((a, b) => a.left - b.left);
+    return o;
+  }
+
   // ---------- Tính vị thế ----------
   function computePositions(data) {
-    const cols = data.columns; const m = data.matrix || {};
+    const cols = data.columns; const m = effectiveMatrix(data);
     const val = (k, c) => num((m[k] || {})[c]);
     const rowSums = {};
     ROWS.forEach(r => { rowSums[r.key] = round2(cols.reduce((s, c) => s + val(r.key, c), 0)); });
@@ -332,5 +506,7 @@
     num, pick, round2, fmt, signed, contractCode,
     parseQuoteName, mxvCode, firstNoticeDay, daysBetween, sessionStatus, HEDGE_DEFAULTS, SCENARIOS, simulateHedge, parseCode, contractLabel, isExpired, nextContracts,
     emptyMatrix, defaultData, sampleData, normalize, rollColumns,
+    CONTRACT_ROWS, CONTAINER_TONNES, basisForShipment, normalizeContract, contractState, contractRows, effectiveMatrix, fixDeadline, contractSummary,
+    TRADE_ROWS, ACCOUNTS, normalizeTrade, tradeLots, tradeRows, futuresBook, linkedLots, contractExposure,
     computePositions, analyzeRisk, quotePriceMap, computeSpreads, computeFob };
 });

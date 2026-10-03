@@ -7,7 +7,7 @@
     data: E.defaultData(), market: null, quotes: null, fx: null, history: {}, prevLast: {},
     dirty: false, tab: 'overview', live: false, fetchedAt: null, changedAt: null, pollTimer: null
   };
-  window.VTApp = { getState: () => state, recalc: () => recalcAll() };
+  window.VTApp = { getState: () => state, recalc: () => recalcAll(), ledgerChanged: msg => ledgerChanged(msg), showTab: t => showTab(t), toast: (m, t) => toast(m, t) };
 
   // ---------- Tiện ích ----------
   const fmt = (n, d) => E.fmt(n, d);
@@ -48,6 +48,7 @@
     if (tab === 'overview') renderOverview();
     if (tab === 'hedge') renderHedge();
     if (tab === 'board') renderBoard();
+    if (tab === 'contracts' && window.VTContracts) window.VTContracts.render();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
   $('tabBar').addEventListener('click', e => { const b = e.target.closest('.tab-btn'); if (b) showTab(b.dataset.tab); });
@@ -210,12 +211,18 @@
       `<tr class="row-spread-header"><th class="col-title text-left">SPREAD (USD/tấn)</th>${cols.map((c, i) => `<th class="spread-cell" id="spreadHead_${i}">${i === 0 ? '—' : ''}</th>`).join('')}<th class="spread-cell total-header">TỔNG</th></tr>`
       + `<tr class="row-col-headers"><th class="col-title text-left">DANH MỤC</th>${cols.map(c => `<th${E.isExpired(c, now) ? ' class="col-expired" title="Kỳ hạn đã đến tháng giao hàng"' : ''}>${E.contractLabel(c)}<br><span class="month-code">${c}</span></th>`).join('')}<th class="col-total">TỔNG</th></tr>`;
     const html = [];
+    // Dòng hợp đồng (📒 hàng thật) và 2 dòng Robusta sàn (📉 hàng ảo) lấy số từ thẻ Giao dịch (chỉ đọc); tồn kho, Arabica, dòng theo dõi vẫn nhập tay
+    const eff = E.effectiveMatrix(state.data); const TRADE_KEYS = Object.values(E.TRADE_ROWS);
     const rowHtml = r => {
+      const kind = E.CONTRACT_ROWS.includes(r.key) ? 'ct' : TRADE_KEYS.includes(r.key) ? 'tr' : '';
       const cells = cols.map(c => {
-        const v = E.num((state.data.matrix[r.key] || {})[c]);
+        const v = E.num(((kind ? eff : state.data.matrix)[r.key] || {})[c]);
+        if (kind) return `<td class="ledger-cell" data-goto="contracts" title="${kind === 'ct' ? 'Số từ Sổ hợp đồng (hàng thật)' : 'Số từ sổ Lệnh sàn (hàng ảo)'} – ghi / sửa ở thẻ 📒 Giao dịch">${v ? fmt(v) : '<span class="ledger-zero">0</span>'}</td>`;
         return `<td><input type="number" step="${r.unit === 'lot' ? 1 : 0.01}" inputmode="decimal" class="cell-input" data-key="${r.key}" data-code="${c}" value="${v === 0 ? '' : v}" placeholder="0"${isViewer() ? ' disabled' : ''}></td>`;
       }).join('');
-      return `<tr class="data-row"><td class="row-label">${r.label} (${r.unit === 'lot' ? 'lot' : 'tấn'})</td>${cells}<td class="row-sum" id="sum_${r.key}">0.00</td></tr>`;
+      const tag = kind === 'ct' ? ' <button type="button" class="ledger-tag" data-goto="contracts" title="Mở Sổ hợp đồng">📒 sổ HĐ</button>'
+        : kind === 'tr' ? ' <button type="button" class="ledger-tag" data-goto="contracts" title="Mở sổ Lệnh sàn">📉 lệnh sàn</button>' : '';
+      return `<tr class="data-row${kind ? ' ledger-row' : ''}"><td class="row-label">${r.label} (${r.unit === 'lot' ? 'lot' : 'tấn'})${tag}</td>${cells}<td class="row-sum" id="sum_${r.key}">0.00</td></tr>`;
     };
     const subtotal = (id, label, gold) => `<tr class="${gold ? 'highlight-net-position-row' : 'subtotal-row'}"><td class="row-label bold">${label}</td>${cols.map((c, i) => `<td class="${gold ? 'net-val' : 'calc-val'} bold" id="${id}_${i}">0.00</td>`).join('')}<td class="${gold ? 'net-val bold total-highlight' : 'calc-val bold total-cell'}" id="${id}_sum">0.00</td></tr>`;
     ['physical', 'futures', 'diff', 'memo'].forEach(g => {
@@ -503,6 +510,7 @@
     $('lastSaved').textContent = state.data.updatedAt ? new Date(state.data.updatedAt).toLocaleString('vi-VN') : 'chưa lưu';
     renderReference(); renderMatrix(); renderCalcOptions(); calculateFob(); recalcAll(); setDirty(false);
     if (state.tab === 'hedge') renderHedge();
+    if (window.VTContracts) window.VTContracts.render();
   }
   async function loadData() { try { applyData(await api('/api/load-matrix')); } catch (e) { toast('Không tải được dữ liệu vị thế', 'error'); } }
   async function saveData() {
@@ -523,6 +531,15 @@
     const t = e.target; if (!t.classList.contains('cell-input')) return;
     state.data.matrix[t.dataset.key][t.dataset.code] = E.pick(t.value, 0); setDirty(true); recalcAll();
   });
+  $('positionBody').addEventListener('click', e => { if (e.target.closest('[data-goto="contracts"]')) showTab('contracts'); });
+  // Sổ hợp đồng vừa thay đổi (ghi / chốt giá / giao hàng / xóa): vẽ lại ma trận, lưu ngay
+  async function ledgerChanged(msg) {
+    renderMatrix(); recalcAll();
+    if (window.VTContracts) window.VTContracts.render();
+    await saveData();
+    if (window.VTContracts) window.VTContracts.render();
+    if (msg && !state.dirty) toast(msg, 'success');
+  }
   $('calcMonthSelect').addEventListener('change', () => { state.data.fobParams.contract = $('calcMonthSelect').value; setDirty(true); calculateFob(); });
   [['calcDiffInput', 'diffUsd'], ['calcFxInput', 'exchangeRate'], ['calcCostInput', 'processingCostVnd']].forEach(([id, key]) =>
     $(id).addEventListener('input', () => { state.data.fobParams[key] = E.pick($(id).value, 0); setDirty(true); calculateFob(); if (key === 'diffUsd' && state.tab === 'overview') renderCurve(); }));
@@ -558,13 +575,24 @@
     lines.push([q('SPREAD (USD/tấn)'), q('-'), ...sp.map(s => q(s.value === null ? `${s.pair}: -` : `${s.pair} = ${s.value}`)), q('')].join(','));
     lines.push([q('DANH MỤC'), ...cols.map(c => q(`${E.contractLabel(c)} (${c})`)), q('TỔNG')].join(','));
     const line = (label, vals, total) => lines.push([q(label), ...vals.map(v => q(E.round2(v))), q(E.round2(total))].join(','));
+    const eff = E.effectiveMatrix(d);
     ['physical', 'futures', 'diff', 'memo'].forEach(g => {
       lines.push(q(E.GROUPS[g]));
-      E.ROWS.filter(r => r.group === g).forEach(r => line(`${r.label} (${r.unit === 'lot' ? 'lot' : 'tấn'})`, cols.map(c => E.num(d.matrix[r.key][c])), pos.rowSums[r.key]));
+      E.ROWS.filter(r => r.group === g).forEach(r => line(`${r.label} (${r.unit === 'lot' ? 'lot' : 'tấn'})`, cols.map(c => E.num((eff[r.key] || {})[c])), pos.rowSums[r.key]));
       if (g === 'physical') line('Vị thế hàng thực (tấn)', pos.physical, pos.totals.physical);
       if (g === 'futures') line('Vị thế tài khoản sàn (tấn)', pos.futures, pos.totals.futures);
       if (g === 'diff') { line('Vị thế trừ lùi chưa chốt giá (tấn)', pos.diff, pos.totals.diff); line('TỔNG VỊ THẾ RÒNG (tấn)', pos.net, pos.totals.net); }
     });
+    // Sổ hợp đồng
+    if ((d.contracts || []).length) {
+      lines.push('', q('SỔ HỢP ĐỒNG MUA / BÁN HÀNG THỰC'));
+      lines.push(['Số HĐ', 'Ngày ký', 'Loại', 'Đối tác', 'Hàng', 'Số lượng (t)', 'Kiểu giá', 'Giá / Diff', 'Đơn vị', 'Kỳ hạn sàn', 'Tháng giao', 'Điều kiện', 'Đã chốt (t)', 'Giá chốt TB (USD/t)', 'Đã giao (t)', 'Ghi chú'].map(q).join(','));
+      d.contracts.forEach(c => {
+        const s = E.contractState(c);
+        lines.push([c.no, c.date, c.side === 'buy' ? 'MUA' : 'BÁN', c.party, c.grade, s.qty, c.pricing === 'diff' ? 'Trừ lùi' : 'Cố định', c.pricing === 'diff' ? c.diff : c.price,
+          c.pricing === 'diff' ? 'USD/tấn (diff)' : c.unit === 'vnd' ? 'VNĐ/kg' : 'USD/tấn', c.basis, c.ship, c.terms, s.fixedT, s.priceUsd === null ? '' : s.priceUsd, s.deliveredT, c.note].map(q).join(','));
+      });
+    }
     const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `Bao_Cao_Vi_The_VietThien_${new Date().toISOString().slice(0, 10)}.csv`; a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
@@ -599,8 +627,8 @@
   // ---------- Khởi động ----------
   buildHedgeInputs();
   let saved = 'overview'; try { saved = localStorage.getItem('vt_tab') || 'overview'; } catch (e) { /* bỏ qua */ }
-  // Link mở thẳng một thẻ: #tong-quan, #vi-the, #phong-ho, #bang-gia
-  const HASH_TAB = { '#tong-quan': 'overview', '#vi-the': 'position', '#phong-ho': 'hedge', '#bang-gia': 'board' };
+  // Link mở thẳng một thẻ: #tong-quan, #vi-the, #hop-dong, #phong-ho, #bang-gia
+  const HASH_TAB = { '#tong-quan': 'overview', '#vi-the': 'position', '#hop-dong': 'contracts', '#phong-ho': 'hedge', '#bang-gia': 'board' };
   if (HASH_TAB[location.hash]) saved = HASH_TAB[location.hash];
   async function loadRole() {
     try {
@@ -612,6 +640,6 @@
         : '✏️ Chỉnh sửa · <a href="/logout">Đăng xuất</a>';
     } catch (e) { state.role = 'viewer'; }
   }
-  loadRole().then(loadData).then(() => { showTab(['overview', 'position', 'hedge', 'board'].includes(saved) ? saved : 'overview'); connectStream(); loadHistory(); });
+  loadRole().then(loadData).then(() => { showTab(['overview', 'position', 'contracts', 'hedge', 'board'].includes(saved) ? saved : 'overview'); connectStream(); loadHistory(); });
   setInterval(loadHistory, 30 * 60 * 1000);
 })();

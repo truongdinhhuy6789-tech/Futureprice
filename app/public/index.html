@@ -41,6 +41,7 @@
     <nav class="tab-bar" id="tabBar" role="tablist">
       <button class="tab-btn active" data-tab="overview" role="tab"><span class="tab-ico">📈</span><span class="tab-txt">Tổng quan</span></button>
       <button class="tab-btn" data-tab="position" role="tab"><span class="tab-ico">📊</span><span class="tab-txt">Vị thế</span></button>
+      <button class="tab-btn" data-tab="contracts" role="tab"><span class="tab-ico">📒</span><span class="tab-txt">Giao dịch</span></button>
       <button class="tab-btn" data-tab="hedge" role="tab"><span class="tab-ico">🛡️</span><span class="tab-txt">Phòng hộ</span></button>
       <button class="tab-btn" data-tab="board" role="tab"><span class="tab-ico">🌐</span><span class="tab-txt">Bảng giá</span></button>
     </nav>
@@ -134,7 +135,7 @@
           <div class="section-header">
             <div class="title-wrap">
               <h2 class="section-title">📊 MA TRẬN VỊ THẾ HÀNG THỰC & PHÒNG HỘ SÀN</h2>
-              <p class="section-desc">Mua/Long nhập số dương, Bán/Short nhập số âm. Đơn vị: tấn (1 lot Robusta = 10 tấn).</p>
+              <p class="section-desc">Mua/Long nhập số dương, Bán/Short nhập số âm. Đơn vị: tấn (1 lot Robusta = 10 tấn). Các dòng hợp đồng (📒) tự lấy từ <b>Sổ hợp đồng</b>.</p>
             </div>
             <div class="header-tools"><span class="unit-note">Cập nhật: <b id="lastSaved">—</b></span></div>
           </div>
@@ -182,6 +183,41 @@
             </div>
           </section>
         </div>
+      </section>
+
+      <!-- ================= 2b. SỔ HỢP ĐỒNG ================= -->
+      <section class="tab-panel" data-panel="contracts" hidden>
+        <div class="panel-toolbar ct-toolbar">
+          <input id="ctSearch" class="form-control ct-search" placeholder="🔍 Tìm số HĐ, đối tác, hàng…">
+          <select id="ctFilter" class="form-control ct-filter">
+            <option value="open">Đang mở</option><option value="unfixed">Chưa chốt giá</option><option value="undelivered">Chưa giao / nhận</option><option value="done">Đã hoàn tất</option><option value="all">Tất cả</option>
+          </select>
+          <button id="btnNewContract" class="btn btn-primary" title="Ghi hợp đồng mua / bán mới"><span class="icon">➕</span> Hợp đồng mới</button>
+        </div>
+        <div class="ct-kpis" id="ctKpis"></div>
+        <section class="section-card">
+          <div class="section-header">
+            <div class="title-wrap">
+              <h2 class="section-title">📒 HÀNG THẬT – SỔ HỢP ĐỒNG MUA / BÁN</h2>
+              <p class="section-desc">Mỗi hợp đồng tự đổ vào ma trận vị thế theo kỳ hạn sàn tham chiếu: phần chưa chốt giá, chưa giao hàng vào đúng dòng. Chốt giá, giao / nhận hàng và phòng hộ (🛡️ Hedge) ghi ngay tại đây – hệ thống tự lưu.</p>
+            </div>
+          </div>
+          <div class="table-scroll ct-wrap"><table class="ct-table" id="ctTable"></table></div>
+          <div id="ctNotes"></div>
+        </section>
+        <section class="section-card">
+          <div class="section-header">
+            <div class="title-wrap">
+              <h2 class="section-title">📉 HÀNG ẢO – LỆNH SÀN ROBUSTA LONDON</h2>
+              <p class="section-desc">Mỗi lệnh MUA / BÁN tự đổ vào dòng "Vị thế Robusta sàn HD Bank / PFS092" của ma trận (1 lot = 10 tấn). Liên kết lệnh với hợp đồng hàng thật để biết hợp đồng nào đã được phòng hộ và còn hở bao nhiêu.</p>
+            </div>
+            <div class="header-tools"><button id="btnNewTrade" class="btn btn-primary" title="Ghi lệnh mua / bán trên sàn"><span class="icon">➕</span> Lệnh sàn</button></div>
+          </div>
+          <div class="ct-kpis" id="trKpis"></div>
+          <div class="table-scroll ct-wrap tr-book-wrap" id="trBook"></div>
+          <div class="table-scroll ct-wrap"><table class="ct-table" id="trTable"></table></div>
+          <div id="trNotes"></div>
+        </section>
       </section>
 
       <!-- ================= 3. MÔ HÌNH PHÒNG HỘ ================= -->
@@ -242,6 +278,15 @@
     </div>
   </div>
 
+  <!-- Sổ hợp đồng: ghi / sửa / chốt giá / giao hàng -->
+  <div class="modal-overlay" id="ctModal">
+    <div class="modal-box ct-modal">
+      <div class="modal-header"><div class="modal-title" id="ctModalTitle">HỢP ĐỒNG</div><button class="modal-close" id="btnCloseCtModal">&times;</button></div>
+      <div class="modal-body" id="ctModalBody"></div>
+      <div class="modal-footer" id="ctModalFoot"></div>
+    </div>
+  </div>
+
   <!-- Trợ lý -->
   <aside class="assistant-drawer" id="assistantDrawer" aria-hidden="true">
     <div class="assistant-header">
@@ -262,5 +307,6 @@
   <script src="assistant.js"></script>
   <script src="charts.js"></script>
   <script src="app.js"></script>
+  <script src="contracts.js"></script>
 </body>
 </html>
