@@ -58,7 +58,8 @@
         el('path', { d, fill: up ? C.pos : C.neg, opacity: Math.abs(v) > lim && lim ? 1 : 0.85 }, svg);
       }
       if (v !== 0) txt((v > 0 ? '+' : '') + fmt(v, Math.abs(v) < 100 ? 1 : 0), { x: cx, y: v > 0 ? y1 - 6 : y1 + 14, 'text-anchor': 'middle', fill: C.text, 'font-size': 11, 'font-weight': 700, 'font-family': 'JetBrains Mono, monospace' }, svg);
-      txt(cfg.labels[i], { x: cx, y: H - m.b + 18, 'text-anchor': 'middle', fill: C.text, 'font-size': 11.5, 'font-weight': 600 }, svg);
+      // Màn hình hẹp (điện thoại): bỏ chữ "Thg" để nhãn tháng không dính nhau
+      txt(band < 64 ? String(cfg.labels[i]).replace(/^Thg\s*/, '') : cfg.labels[i], { x: cx, y: H - m.b + 18, 'text-anchor': 'middle', fill: C.text, 'font-size': 11.5, 'font-weight': 600 }, svg);
       txt(cfg.codes[i], { x: cx, y: H - m.b + 33, 'text-anchor': 'middle', fill: C.muted, 'font-size': 10, 'font-family': 'JetBrains Mono, monospace' }, svg);
       const hit = el('rect', { x: m.l + band * i, y: m.t, width: band, height: H - m.t - m.b, fill: 'transparent', style: 'cursor:pointer' }, svg);
       const b = (cfg.breakdown || [])[i] || {};

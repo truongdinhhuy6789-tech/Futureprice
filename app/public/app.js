@@ -69,10 +69,13 @@
       : `<span class="pulse-dot" style="background:var(--yellow)"></span><span class="status-text" style="color:var(--yellow)">${msg || 'Đang kết nối lại…'}</span>`;
   }
 
-  // ---------- Nhận dữ liệu thời gian thực (SSE) ----------
+  // ---------- Nhận dữ liệu thời gian thực ----------
+  // Trong máy/LAN: luồng SSE – máy chủ đẩy ngay khi giá đổi.
+  // Qua link online (Cloudflare không cho luồng SSE đi qua): hỏi giá mỗi 3 giây, giá chưa đổi chỉ nhận gói nhỏ.
+  const POLL_MS = 3000;
   function applySnapshot(snap) {
     if (!snap) return;
-    if (snap.fx) applyFx(snap.fx);
+    if (snap.fx && (!state.fx || snap.fx.fetchedAt !== state.fx.fetchedAt)) applyFx(snap.fx);
     state.fetchedAt = snap.fetchedAt || state.fetchedAt; state.changedAt = snap.changedAt || state.changedAt;
     if (snap.data) {
       const changed = {};
@@ -87,23 +90,45 @@
     if (snap.success === false && snap.error) setLive(state.live, 'Nguồn giá lỗi: ' + snap.error);
     tick();
   }
-  function connectStream() {
-    if (!window.EventSource) return startPolling();
-    const es = new EventSource('/api/stream'); let fails = 0;
-    es.onopen = () => { fails = 0; setLive(true); stopPolling(); };
-    es.onerror = () => { setLive(false); if (++fails >= 5) { es.close(); startPolling(); } };
-    es.addEventListener('quotes', e => applySnapshot(JSON.parse(e.data)));
-    es.addEventListener('heartbeat', e => { const h = JSON.parse(e.data); state.fetchedAt = h.fetchedAt || state.fetchedAt; setLive(true, h.ok ? '' : 'Nguồn giá lỗi'); if (!h.ok) setLive(false, 'Nguồn giá gián đoạn – dùng giá gần nhất'); });
-    es.addEventListener('fx', e => applyFx(JSON.parse(e.data)));
-    es.addEventListener('positions', e => {
-      const p = JSON.parse(e.data);
-      if (state.saving || p.updatedAt === state.data.updatedAt) return; // chính mình vừa lưu → bỏ qua
-      if (state.dirty) toast('⚠️ Có người vừa lưu số liệu vị thế mới – bạn đang có thay đổi chưa lưu', 'error');
-      else loadData().then(() => toast('🔄 Số liệu vị thế vừa được cập nhật'));
-    });
+  // Có người khác vừa lưu số liệu vị thế → tải lại (hoặc nhắc nếu mình đang sửa dở)
+  function onPositions(updatedAt) {
+    if (!updatedAt || !state.data || state.saving || state.reloading || updatedAt === state.data.updatedAt) return;
+    if (state.dirty) {
+      if (state.warnedAt !== updatedAt) { state.warnedAt = updatedAt; toast('⚠️ Có người vừa lưu số liệu vị thế mới – bạn đang có thay đổi chưa lưu', 'error'); }
+      return;
+    }
+    state.reloading = true;
+    loadData().then(() => toast('🔄 Số liệu vị thế vừa được cập nhật')).finally(() => { state.reloading = false; });
   }
-  function startPolling() { if (state.pollTimer) return; setLive(false, 'Chế độ dự phòng – cập nhật 15 giây/lần'); const f = async () => { try { applySnapshot(await api('/api/live-quotes')); } catch (e) { /* thử lại lần sau */ } }; f(); state.pollTimer = setInterval(f, 15000); }
-  function stopPolling() { clearInterval(state.pollTimer); state.pollTimer = null; }
+  function connectStream() {
+    if (state.tunnel || !window.EventSource) return startPolling();
+    const es = new EventSource('/api/stream'); let fails = 0, gotData = false, lastMsg = Date.now();
+    const seen = () => { lastMsg = Date.now(); fails = 0; };
+    const fallback = () => { clearInterval(watchdog); es.close(); startPolling(); };
+    // Luồng bị proxy giữ lại: 8 giây chưa có giá đầu tiên, hoặc im lặng 40 giây → chuyển sang hỏi giá định kỳ
+    const watchdog = setInterval(() => { if (Date.now() - lastMsg > (gotData ? 40000 : 8000)) fallback(); }, 2000);
+    es.onerror = () => { setLive(false); if (++fails >= 5) fallback(); };
+    es.addEventListener('quotes', e => { seen(); gotData = true; setLive(true); applySnapshot(JSON.parse(e.data)); });
+    es.addEventListener('heartbeat', e => {
+      seen(); const h = JSON.parse(e.data); state.fetchedAt = h.fetchedAt || state.fetchedAt;
+      if (h.ok) setLive(true); else setLive(false, 'Nguồn giá gián đoạn – dùng giá gần nhất');
+    });
+    es.addEventListener('fx', e => { seen(); applyFx(JSON.parse(e.data)); });
+    es.addEventListener('positions', e => { seen(); onPositions(JSON.parse(e.data).updatedAt); });
+  }
+  async function pollOnce() {
+    try {
+      const snap = await api('/api/live-quotes' + (state.changedAt ? '?since=' + encodeURIComponent(state.changedAt) : ''));
+      if (snap.success === false) setLive(false, 'Nguồn giá gián đoạn – dùng giá gần nhất'); else setLive(true);
+      applySnapshot(snap); onPositions(snap.positionsAt);
+    } catch (e) { setLive(false, 'Mất kết nối – đang thử lại'); }
+  }
+  function startPolling() {
+    if (state.pollTimer) return;
+    pollOnce(); state.pollTimer = setInterval(() => { if (!document.hidden) pollOnce(); }, POLL_MS);
+  }
+  // Mở lại tab / mở khóa điện thoại → cập nhật ngay, không chờ nhịp kế tiếp
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && state.pollTimer) pollOnce(); });
 
   // ---------- Kiểm tra lại giá (lấy lại ngay từ giacaphe.com) ----------
   async function recheck() {
@@ -310,18 +335,45 @@
       state.data.hedgeParams[k] = v; setDirty(true); renderHedge(true);
     });
   }
-  function fillHedgeInputs() {
-    document.querySelectorAll('.hedge-in').forEach(i => { const k = i.dataset.k; const v = state.data.hedgeParams[k]; i.value = k === 'hybridRatio' ? Math.round(v * 100) : v; });
+  // Ô F0 / FOB mục tiêu / K_put / K_call để trống = tự lấy theo giá sàn trực tiếp → mô hình luôn có số và nhảy theo giá realtime.
+  // Nhập số vào ô = cố định giá trị đó (bấm Lưu để giữ lại).
+  const HEDGE_AUTO = ['f0', 'fobTarget', 'kPut', 'kCall'];
+  function hedgeMarketPick() {
+    const list = (state.quotes || {}).coffee_liffe || [];
+    return list.find(q => q.Name === state.data.fobParams.contract) || list[0] || null;
+  }
+  function effectiveHedge() {
+    const hp = { ...state.data.hedgeParams }; const auto = {}; const pick = hedgeMarketPick();
+    if (!hp.f0 && pick) { hp.f0 = E.num(pick.Last); auto.f0 = true; }
+    if (hp.f0) {
+      const a = { fobTarget: hp.f0 + E.num(state.data.fobParams.diffUsd), kPut: Math.round((hp.f0 - 300) / 50) * 50, kCall: Math.round(hp.f0 / 50) * 50 };
+      Object.keys(a).forEach(k => { if (!hp[k]) { hp[k] = a[k]; auto[k] = true; } });
+    }
+    return { hp, auto, pick };
+  }
+  function fillHedgeInputs(keepValues) {
+    const { hp, auto } = effectiveHedge();
+    document.querySelectorAll('.hedge-in').forEach(i => {
+      const k = i.dataset.k; const v = state.data.hedgeParams[k]; const isAuto = HEDGE_AUTO.includes(k) && !v;
+      i.classList.toggle('auto', isAuto);
+      i.placeholder = isAuto ? (auto[k] ? `${fmt(hp[k])} · tự động` : 'tự động') : '';
+      if (keepValues || i === document.activeElement) return; // không ghi đè ô đang gõ
+      i.value = isAuto ? '' : k === 'hybridRatio' ? Math.round(v * 100) : v;
+    });
   }
   function renderHedge(fromInput) {
-    if (!fromInput) fillHedgeInputs();
-    const hp = state.data.hedgeParams;
+    fillHedgeInputs(fromInput);
+    const { hp, auto, pick } = effectiveHedge();
     if (!hp.f0) {
-      $('hedgeDerived').innerHTML = '<div class="alert-box info"><div class="alert-icon">ℹ️</div><div class="alert-text">Bấm <b>⬇️ Lấy giá sàn hiện tại</b> để điền F0, giá FOB, Put/Call theo giá London hiện tại, hoặc tự nhập các ô.</div></div>';
+      $('hedgeDerived').innerHTML = '<div class="alert-box info"><div class="alert-icon">ℹ️</div><div class="alert-text">Chưa có giá sàn London – bấm <b>Kiểm tra lại giá</b> hoặc tự nhập F0.</div></div>';
       $('hedgeCompare').innerHTML = ''; $('hedgeScenarios').innerHTML = ''; return;
     }
+    const autoList = HEDGE_AUTO.filter(k => auto[k]).map(k => ({ f0: 'F0', fobTarget: 'FOB mục tiêu', kPut: 'K_put', kCall: 'K_call' })[k]);
+    const note = auto.f0
+      ? `<div class="hd-note live">⚡ Đang chạy theo giá sàn trực tiếp <b>${esc(pick.Name)} = ${fmt(hp.f0)} USD/tấn</b> – tự cập nhật mỗi khi giá đổi. Ô để trống (${autoList.join(', ')}) tự tính theo giá này; nhập số vào ô để cố định.</div>`
+      : autoList.length ? `<div class="hd-note">Ô để trống (${autoList.join(', ')}) đang tự tính từ F0 = ${fmt(hp.f0)}.</div>` : '';
     const h = E.simulateHedge(hp, state.fx && state.fx.transfer);
-    $('hedgeDerived').innerHTML = [
+    $('hedgeDerived').innerHTML = note + [
       ['Mức chênh lệch động (Diff = FOB − F0)', `${signed(h.diff)} USD/tấn`],
       ['Tỷ giá VCB tham chiếu', state.fx ? `${fmt(state.fx.transfer)} VNĐ` : '—'],
       ['Tỷ giá áp dụng tính toán (S0)', `${fmt(h.s0)} VNĐ${hp.fxManual > 0 ? ' (thủ công)' : ' (VCB)'}`],
@@ -345,14 +397,16 @@
     $('hedgeScenarios').innerHTML = `<thead><tr><th>Kịch bản ICE London lúc đáo hạn</th><th>Giá ICE</th><th>Không phòng hộ</th><th>1. Futures</th><th>2. Long Put</th><th>3. Collar</th><th>4. Hybrid</th></tr></thead><tbody>`
       + h.scenarios.map(r => { const mx = Math.max(...keys.map(k => r[k])); return `<tr><td class="lbl ${r.pct < 0 ? 'neg' : r.pct > 0 ? 'pos' : ''}">${r.label} (${signed(r.pct * 100)}%)</td><td>${fmt(r.ice, 2)}</td>${keys.map(k => `<td class="${r[k] === mx ? 'best' : ''}">${fmt(r[k], 2)}</td>`).join('')}</tr>`; }).join('') + '</tbody>';
   }
+  // 📌 Chốt: ghi cứng các giá trị đang tự động theo giá hiện tại  ·  ⚡ Trực tiếp: xóa 4 ô để quay lại chạy theo giá sàn
   $('btnHedgeFromMarket').addEventListener('click', () => {
-    const list = (state.quotes || {}).coffee_liffe || [];
-    const pick = list.find(q => q.Name === state.data.fobParams.contract) || list[0];
-    if (!pick) return toast('Chưa có giá sàn – bấm Kiểm tra lại giá', 'error');
-    const f0 = E.num(pick.Last); const hp = state.data.hedgeParams;
-    hp.f0 = f0; hp.fobTarget = f0 + E.num(state.data.fobParams.diffUsd);
-    hp.kPut = Math.round((f0 - 300) / 50) * 50; hp.kCall = Math.round(f0 / 50) * 50;
-    setDirty(true); renderHedge(); toast(`Đã điền F0 = ${fmt(f0)} (${pick.Name}) – nhớ bấm Lưu`);
+    const { hp, auto, pick } = effectiveHedge();
+    if (!hp.f0) return toast('Chưa có giá sàn – bấm Kiểm tra lại giá', 'error');
+    HEDGE_AUTO.forEach(k => { if (auto[k]) state.data.hedgeParams[k] = hp[k]; });
+    setDirty(true); renderHedge(); toast(`📌 Đã chốt F0 = ${fmt(hp.f0)}${auto.f0 && pick ? ` (${pick.Name})` : ''}${isViewer() ? '' : ' – nhớ bấm Lưu'}`);
+  });
+  $('btnHedgeLive').addEventListener('click', () => {
+    HEDGE_AUTO.forEach(k => { state.data.hedgeParams[k] = 0; });
+    setDirty(true); renderHedge(); toast(`⚡ Mô hình chạy theo giá sàn trực tiếp${isViewer() ? '' : ' – bấm Lưu để giữ chế độ này'}`);
   });
 
   // ---------- 4. Bảng giá trực tuyến (bố cục như giacaphe.com) ----------
@@ -525,7 +579,7 @@
   if (HASH_TAB[location.hash]) saved = HASH_TAB[location.hash];
   async function loadRole() {
     try {
-      const me = await api('/api/me'); state.role = me.role;
+      const me = await api('/api/me'); state.role = me.role; state.tunnel = !!me.tunnel;
       document.body.classList.toggle('viewer', me.role === 'viewer');
       const b = $('roleBadge'); b.hidden = me.local;
       b.innerHTML = `${me.role === 'viewer' ? '👁 Chỉ xem' : '✏️ Chỉnh sửa'} · <a href="/logout">Đăng xuất</a>`;

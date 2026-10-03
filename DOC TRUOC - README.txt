@@ -2,6 +2,9 @@ VIỆT THIÊN COFFEE GROUP – HỆ THỐNG QUẢN TRỊ VỊ THẾ HÀNG THỰC
 
 BẬT:   nháy đúp CHAY_HE_THONG.bat  → trình duyệt mở http://localhost:3456
 TẮT:   nháy đúp DUNG_HE_THONG.bat
+LINK ONLINE CHO SẾP: nháy đúp MO_LINK_ONLINE.bat → link https://….trycloudflare.com tự chép vào bộ nhớ tạm, dán gửi sếp
+       Sếp đăng nhập bằng mật khẩu CHỈ XEM (sep-…); mật khẩu nằm trong app\data\access.json (cửa sổ link cũng hiện)
+       Máy phải bật, không để chế độ ngủ. Mở lại = link mới. Tắt link: TAT_LINK_ONLINE.bat
 TRỢ LÝ: bấm nút "🤖 Trợ lý" trên hệ thống (hoặc mở http://localhost:3456/#tro-ly)
 
 Tài liệu cơ chế & hướng dẫn: thư mục TAI_LIEU

@@ -30,16 +30,19 @@ function loadPositions() {
   try { return engine.normalize(JSON.parse(fs.readFileSync(POSITION_FILE, 'utf8'))); }
   catch (e) { return engine.defaultData(); }
 }
+let positionsAt = null; // lần lưu vị thế gần nhất – màn hình hỏi giá định kỳ dùng để biết có số liệu mới
 function savePositions(data) {
   const clean = engine.normalize(data);
   clean.updatedAt = new Date().toISOString();
   const tmp = POSITION_FILE + '.tmp';
   fs.writeFileSync(tmp, JSON.stringify(clean, null, 2), 'utf8');
   fs.renameSync(tmp, POSITION_FILE);
+  positionsAt = clean.updatedAt;
   broadcast('positions', { updatedAt: clean.updatedAt });
   return clean;
 }
 if (!fs.existsSync(POSITION_FILE)) savePositions(engine.defaultData());
+positionsAt = loadPositions().updatedAt || null;
 
 // ---------- Luồng thời gian thực (SSE) ----------
 const clients = new Set();
@@ -76,9 +79,15 @@ async function fetchQuotes() {
     console.error('[Giá sàn] Không lấy được giá:', err.message);
   }
 }
-(function quoteLoop() {
-  fetchQuotes().finally(() => setTimeout(quoteLoop, clients.size ? QUOTES_FAST_MS : QUOTES_IDLE_MS));
-})();
+// Có người đang xem = có luồng SSE (trong máy/LAN) hoặc vừa hỏi giá trong 30 giây (qua link online)
+let lastPollAt = 0, loopTimer = null, fetching = false;
+const watching = () => clients.size > 0 || Date.now() - lastPollAt < 30000;
+function quoteLoop() {
+  clearTimeout(loopTimer); fetching = true;
+  fetchQuotes().finally(() => { fetching = false; loopTimer = setTimeout(quoteLoop, watching() ? QUOTES_FAST_MS : QUOTES_IDLE_MS); });
+}
+function wakeQuotes() { if (!fetching) quoteLoop(); } // người đầu tiên vào xem → lấy giá ngay và chuyển sang nhịp 5 giây
+quoteLoop();
 
 // ---------- Lịch sử giá theo ngày (để vẽ đường cong kỳ hạn theo tuần/tháng) ----------
 const HISTORY_FILE = path.join(DATA_DIR, 'price_history.json');
@@ -114,7 +123,7 @@ async function fetchFx() {
 fetchFx(); setInterval(fetchFx, FX_EVERY_MS);
 
 function snapshot() {
-  return { success: market.ok, error: market.error, data: market.quotes, fetchedAt: market.fetchedAt, changedAt: market.changedAt, fx: market.fx };
+  return { success: market.ok, error: market.error, data: market.quotes, fetchedAt: market.fetchedAt, changedAt: market.changedAt, fx: market.fx, positionsAt };
 }
 
 // Bot Telegram: hỏi lệnh mỗi 5 giây (bot tự bỏ qua nếu chưa bật)
@@ -164,7 +173,7 @@ const server = http.createServer(async (req, res) => {
       if (pathname.startsWith('/api/')) return sendJson(res, 401, { success: false, error: 'Cần đăng nhập' });
       res.writeHead(302, { Location: '/login' }); return res.end();
     }
-    if (pathname === '/api/me') return sendJson(res, 200, { role, local: auth.isDirectLocal(req) });
+    if (pathname === '/api/me') return sendJson(res, 200, { role, local: auth.isDirectLocal(req), tunnel: !!req.headers['cf-ray'] });
     if (EDITOR_ONLY.includes(pathname) && role !== 'editor') return sendJson(res, 403, { success: false, error: 'Tài khoản chỉ xem – không có quyền thay đổi' });
 
     if (pathname === '/api/stream') {
@@ -173,11 +182,20 @@ const server = http.createServer(async (req, res) => {
       res.write(`event: quotes\ndata: ${JSON.stringify(snapshot())}\n\n`);
       clients.add(res);
       req.on('close', () => clients.delete(res));
-      if (clients.size === 1) fetchQuotes(); // người đầu tiên mở → lấy giá ngay
+      if (clients.size === 1 && lastPollAt < Date.now() - 30000) wakeQuotes();
       return;
     }
+    // Hỏi giá định kỳ (link online qua Cloudflare không hỗ trợ SSE). ?since=changedAt → giá chưa đổi thì trả gói nhỏ
+    // POST = nút "Kiểm tra lại giá": lấy lại ngay từ giacaphe.com (tối đa 1 lần / 2 giây để không làm phiền trang nguồn)
     if (pathname === '/api/live-quotes') {
-      if (req.method === 'POST' || !market.quotes) await fetchQuotes();
+      if (req.method === 'POST') {
+        if (!market.fetchedAt || Date.now() - Date.parse(market.fetchedAt) > 2000) await fetchQuotes();
+        return sendJson(res, 200, snapshot());
+      }
+      const wasIdle = !watching(); lastPollAt = Date.now();
+      if (!market.quotes) await fetchQuotes(); else if (wasIdle) wakeQuotes();
+      const since = new URL(req.url, 'http://localhost').searchParams.get('since');
+      if (since && since === market.changedAt && market.ok) return sendJson(res, 200, { ...snapshot(), data: undefined, unchanged: true });
       return sendJson(res, 200, snapshot());
     }
     if (pathname === '/api/load-matrix') return sendJson(res, 200, loadPositions());

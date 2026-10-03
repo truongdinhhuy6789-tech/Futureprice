@@ -1249,3 +1249,9 @@ body {
 body.viewer .btn-save, body.viewer #btnResetSample, body.viewer #btnRoll, body.viewer #btnTelegramModal, body.viewer #btnEditDomestic { display: none; }
 body.viewer .cell-input:disabled { opacity: 1; cursor: default; background: transparent; border-color: transparent; }
 body.viewer .roll-banner { display: none !important; }
+
+/* Mô hình phòng hộ chạy theo giá trực tiếp */
+.hedge-in.auto::placeholder { color: #FCD34D; opacity: 0.75; }
+.hd-note { grid-column: 1 / -1; font-size: 12.5px; line-height: 1.5; color: var(--text-secondary); background: var(--bg-card-secondary); border: 1px dashed var(--border-color); border-radius: 8px; padding: 9px 12px; }
+.hd-note.live { color: #FDE68A; background: rgba(251, 191, 36, 0.08); border-color: rgba(251, 191, 36, 0.35); }
+.hd-note b { color: var(--text-primary); }
