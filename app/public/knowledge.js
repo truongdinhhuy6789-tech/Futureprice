@@ -4,7 +4,7 @@
 window.VTKnowledge = {
   cats: [
     ['gia', '💲 Giá & quy đổi'], ['chatluong', '📏 Chất lượng'], ['hopdong', '📝 Hợp đồng & chốt giá'], ['phongho', '🛡️ Phòng hộ & sàn'],
-    ['vithe', '⚖️ Quản trị vị thế'], ['thitruong', '🌦️ Phân tích thị trường'], ['tuvan', '🎯 Tư vấn & nguyên tắc'], ['thuatngu', '📖 Thuật ngữ']
+    ['vithe', '⚖️ Quản trị vị thế'], ['thitruong', '🌦️ Phân tích thị trường'], ['tuvan', '🎯 Tư vấn & nguyên tắc'], ['thuatngu', '📖 Thuật ngữ'], ['huongdan', '📘 Hướng dẫn sử dụng']
   ],
   articles: [
     // ===================== GIÁ & QUY ĐỔI =====================
@@ -385,6 +385,27 @@ window.VTKnowledge = {
         <tr><td><b>Settlement</b></td><td>Giá chốt phiên</td></tr>
         <tr><td><b>Spread</b></td><td>Chênh lệch giữa hai kỳ hạn</td></tr>
         <tr><td><b>Washout</b></td><td>Hai bên thỏa thuận hủy hợp đồng, thanh toán phần chênh lệch giá</td></tr>
-        <tr><td><b>WP (Wet Polished)</b></td><td>Đánh bóng ướt</td></tr></table>` }
+        <tr><td><b>WP (Wet Polished)</b></td><td>Đánh bóng ướt</td></tr></table>` },
+
+    // ===================== HƯỚNG DẪN SỬ DỤNG =====================
+    { id: 'dung-tren-dien-thoai', cat: 'huongdan', title: 'Dùng hệ thống trên điện thoại', tags: 'dien thoai mobile man hinh chinh nut bam quay lai doc tai lieu co chu iphone android',
+      sum: 'Mở bằng link cố định, đặt biểu tượng ra màn hình chính, chuyển thẻ ở thanh dưới, nút Quay lại đóng cửa sổ, chỉnh cỡ chữ khi đọc.',
+      body: `<ol><li><b>Mở hệ thống:</b> luôn dùng link cố định <b>truongdinhhuy6789-tech.github.io/Futureprice</b> – link này tự chuyển tới máy chủ đang chạy, kể cả khi link Cloudflare đổi.</li>
+        <li><b>Đặt ra màn hình chính</b> để mở như ứng dụng: Android (Chrome) bấm <b>⋮ → Thêm vào màn hình chính</b>; iPhone (Safari) bấm <b>Chia sẻ → Thêm vào MH chính</b>. Nên thêm khi đang ở link cố định.</li>
+        <li><b>Chuyển thẻ</b> bằng thanh dưới đáy (Tổng quan · Vị thế · Giao dịch · Phòng hộ · Bảng giá · Kiến thức); bấm thẻ là về đầu trang.</li>
+        <li><b>Thẻ giá</b> ở đầu trang <b>vuốt ngang</b> để xem London, New York, tỷ giá, nhân xô.</li>
+        <li><b>Trợ lý khuyên</b> trên điện thoại hiện 1 ý quan trọng nhất; bấm <b>▾</b> để xem đủ (máy nhớ lựa chọn). Nút logo Trợ lý tạm ẩn khi cuộn xuống, cuộn lên là hiện lại.</li>
+        <li><b>Nút Quay lại</b> của điện thoại (hoặc vuốt lùi trên iPhone) đóng hộp thoại, Trợ lý, bài đang đọc – không thoát khỏi hệ thống.</li>
+        <li><b>Đọc tài liệu:</b> trong bài có thanh trên cùng: <b>← Thư viện</b>, số thứ tự bài, <b>A− / A+</b> chỉnh cỡ chữ (máy nhớ cỡ chữ); cuối bài có <b>Bài trước / Bài sau</b>. Bảng rộng thì vuốt ngang trong bảng.</li>
+        <li><b>Ma trận vị thế</b>: cột tên dính bên trái, vuốt ngang để xem các kỳ; ô có nền xanh nhạt là số lấy từ sổ – <b>bấm vào ô</b> để xem và sửa lệnh/hợp đồng tạo ra số đó.</li></ol>` },
+    { id: 'quy-trinh-ghi-giao-dich', cat: 'huongdan', title: 'Quy trình ghi hợp đồng, phòng hộ và giao hàng', tags: 'quy trinh ghi hop dong hedge lenh cho khop ke hoach giao hang sua nhanh ma tran',
+      sum: 'Ký hợp đồng → ghi sổ → 🛡️ Hedge tạo lệnh chờ → khớp trên sàn thì bấm ✔ Khớp → ghi lịch giao → giao xong thì xác nhận.',
+      body: `<ol><li><b>Ký hợp đồng:</b> thẻ 📒 Giao dịch → <b>➕ Hợp đồng mới</b> (mua/bán, giá cố định hoặc trừ lùi, số tấn, kỳ tham chiếu). Vị thế tự cập nhật.</li>
+        <li><b>Phòng hộ:</b> bấm <b>🛡️ Hedge</b> trên hợp đồng → hệ thống đề xuất số lot và kỳ hạn, ghi thành <b>⏳ lệnh chờ</b> (chưa tính vào vị thế).</li>
+        <li><b>Khi lệnh khớp trên sàn:</b> bấm <b>✔ Khớp</b>, sửa ngày và giá khớp thực tế → lúc này mới tính vào vị thế sàn. Chưa đặt lệnh thì để nguyên lệnh chờ hoặc xóa.</li>
+        <li><b>Lịch giao hàng:</b> bấm <b>🚚 Giao</b>, ghi ngày tàu dự kiến – ngày sau hôm nay là <b>🗓 kế hoạch</b>, hợp đồng vẫn tính là chưa giao; giao xong bấm <b>✔ Đã giao hôm nay</b> (hoặc để tới ngày hệ thống tự tính).</li>
+        <li><b>Hợp đồng trừ lùi:</b> bấm <b>🔒 Chốt</b> mỗi lần chốt giá (số tấn + giá London lúc chốt).</li>
+        <li><b>Kiểm tra:</b> thẻ 📈 Tổng quan – dòng vàng <b>TỔNG VỊ THẾ RÒNG</b>: âm = đang thiếu hàng (giá tăng là lỗ), dương = dư hàng (giá giảm là lỗ). Số nào sai → bấm vào ô đó ở thẻ Vị thế để sửa ngay.</li></ol>
+        <p>Ví dụ: bán 38,4 t giá chốt 3.800 FOB, chưa mua hàng, chưa mua sàn → <b>−38,4 t</b>. Mua 4 lot cùng kỳ khớp xong → còn khoảng <b>+1,6 t</b>.</p>` }
   ]
 };

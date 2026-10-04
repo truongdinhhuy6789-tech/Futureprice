@@ -30,11 +30,15 @@
 
   // ---------- Thẻ Kiến thức ----------
   let cat = 'all', current = null;
+  // Cỡ chữ khi đọc bài (A− / A+), nhớ riêng trên từng máy
+  let fs = 0; try { fs = Number(localStorage.getItem('vt_libfs')) || 0; } catch (e) { /* bỏ qua */ }
+  const listNow = () => { const q = $('libSearch').value.trim(); return q ? search(q, 40) : KB.articles.filter(a => cat === 'all' || a.cat === cat); };
   function render() {
     const box = $('libBody'); if (!box) return;
+    const panel = box.closest('.tab-panel'); if (panel) panel.classList.toggle('reading', !!current);
     if (current) return renderArticle(current);
     const q = $('libSearch').value.trim();
-    const list = q ? search(q, 40) : KB.articles.filter(a => cat === 'all' || a.cat === cat);
+    const list = listNow();
     $('libCats').innerHTML = [['all', '📚 Tất cả']].concat(KB.cats).map(([k, l]) => `<button type="button" class="lib-cat${!q && k === cat ? ' on' : ''}" data-cat="${k}">${l}<small>${k === 'all' ? KB.articles.length : KB.articles.filter(a => a.cat === k).length}</small></button>`).join('');
     box.innerHTML = (q ? `<p class="lib-hint">${list.length ? `${list.length} bài khớp "<b>${esc(q)}</b>"` : `Không tìm thấy bài nào cho "<b>${esc(q)}</b>" – thử từ khóa khác (vd: diff, chốt giá, ký quỹ, R2, spread)`}</p>` : '')
       + `<div class="lib-grid">${list.map(a => `<button type="button" class="lib-card" data-id="${a.id}"><span class="lib-card-cat">${esc(CAT[a.cat] || '')}</span><b>${esc(a.title)}</b><span>${esc(a.sum)}</span></button>`).join('')}</div>`;
@@ -42,15 +46,29 @@
   function renderArticle(id) {
     const a = byId(id); const box = $('libBody'); if (!a) { current = null; return render(); }
     const rel = related(a);
-    box.innerHTML = `<article class="lib-article"><button type="button" class="btn btn-sm btn-outline lib-back" data-back="1">← Thư viện</button>
+    // Bài trước / bài sau theo danh sách đang xem (nhóm hoặc kết quả tìm); mở từ nút ⓘ thì theo nhóm của bài
+    let list = listNow(); if (!list.some(x => x.id === id)) list = KB.articles.filter(x => x.cat === a.cat);
+    const i = list.findIndex(x => x.id === id), prev = list[i - 1], next = list[i + 1];
+    const navBtn = (b, cls, label) => `<button type="button" class="${cls}" ${b ? `data-id="${b.id}"` : 'disabled'}><small>${label}</small>${b ? esc(b.title) : ''}</button>`;
+    box.innerHTML = `<article class="lib-article"${fs ? ` style="--lib-fs:${fs}px"` : ''}>
+      <div class="lib-bar"><button type="button" class="btn btn-sm btn-outline lib-back" data-back="1">← Thư viện</button><span class="sp"></span>
+        <span class="lib-pos">${i + 1}/${list.length}</span><button type="button" class="lib-fs" data-fs="-1" title="Chữ nhỏ lại" aria-label="Chữ nhỏ lại">A−</button><button type="button" class="lib-fs" data-fs="1" title="Chữ to lên" aria-label="Chữ to lên">A+</button></div>
       <div class="lib-card-cat">${esc(CAT[a.cat] || '')}</div><h2>${esc(a.title)}</h2><p class="lib-sum">${esc(a.sum)}</p><div class="lib-content">${a.body}</div>
+      <div class="lib-nav">${navBtn(prev, 'prev', '← Bài trước')}${navBtn(next, 'next', 'Bài sau →')}</div>
       ${rel.length ? `<h4>Bài liên quan</h4><div class="lib-rel">${rel.map(b => `<button type="button" class="lib-chip" data-id="${b.id}">${esc(b.title)}</button>`).join('')}</div>` : ''}
       <p class="lib-foot">Hỏi thêm Trợ lý (nút logo góc phải) hoặc bổ sung bài trong file <code>app/public/knowledge.js</code>.</p></article>`;
   }
+  // Cuộn tới đầu bài đang đọc (hoặc tới thẻ bài vừa đọc khi quay lại danh sách), chừa chỗ cho thanh đầu trang đang dính (máy tính)
+  function stickyTop() {
+    let o = 0;
+    document.querySelectorAll('.top-nav, #tabBar').forEach(e => { const st = getComputedStyle(e); if (st.position === 'sticky') o = Math.max(o, (parseFloat(st.top) || 0) + e.getBoundingClientRect().height); });
+    return o;
+  }
+  function scrollToEl(el) { if (el) window.scrollTo({ top: Math.max(0, el.getBoundingClientRect().top + window.scrollY - stickyTop() - 8) }); }
   function open(id) {
     current = byId(id) ? id : null;
     if (window.VTApp && window.VTApp.showTab) window.VTApp.showTab('library'); else render();
-    if (current) setTimeout(() => { const el = $('libBody'); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, 50);
+    if (current) setTimeout(() => scrollToEl(document.querySelector('.lib-article')), 50);
   }
 
   // ---------- Xem nhanh từ nút ⓘ ----------
@@ -83,8 +101,16 @@
     $('libSearch').addEventListener('input', () => { current = null; render(); });
     $('libCats').addEventListener('click', e => { const b = e.target.closest('[data-cat]'); if (!b) return; cat = b.dataset.cat; current = null; $('libSearch').value = ''; render(); });
     $('libBody').addEventListener('click', e => {
-      const c = e.target.closest('[data-id]'); if (c) { current = c.dataset.id; render(); window.scrollTo({ top: $('libSearch').getBoundingClientRect().top + window.scrollY - 90, behavior: 'smooth' }); return; }
-      if (e.target.closest('[data-back]')) { current = null; render(); }
+      const c = e.target.closest('[data-id]'); if (c) { current = c.dataset.id; render(); scrollToEl(document.querySelector('.lib-article')); return; }
+      const f = e.target.closest('[data-fs]');
+      if (f) {
+        const art = document.querySelector('.lib-article'); if (!art) return;
+        const now = parseFloat(getComputedStyle(art).getPropertyValue('--lib-fs')) || 14;
+        fs = Math.min(24, Math.max(12, now + Number(f.dataset.fs))); art.style.setProperty('--lib-fs', fs + 'px');
+        try { localStorage.setItem('vt_libfs', String(fs)); } catch (err) { /* bỏ qua */ }
+        return;
+      }
+      if (e.target.closest('[data-back]')) { const was = current; current = null; render(); scrollToEl(document.querySelector(`.lib-card[data-id="${was}"]`) || $('libSearch')); }
     });
     addSpots(); setTimeout(addSpots, 1500);
     if (location.hash.startsWith('#kien-thuc/')) current = location.hash.slice(11);

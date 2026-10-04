@@ -153,6 +153,8 @@ Các thông số (kỳ hạn, Diff, tỷ giá, chi phí) được lưu cùng s�
 
 ## 9. Quy trình sử dụng hằng ngày
 
+**Trên điện thoại:** mở link cố định và đặt ra màn hình chính. Chuyển thẻ ở thanh dưới đáy; thẻ giá vuốt ngang; nút Quay lại của điện thoại đóng hộp thoại, Trợ lý, bài đang đọc. Đọc tài liệu có A−/A+ chỉnh cỡ chữ. Chi tiết: thẻ 📚 Kiến thức → 📘 Hướng dẫn sử dụng → "Dùng hệ thống trên điện thoại".
+
 1. Sáng: mở hệ thống, kiểm tra giá sàn và spread.
 2. Cập nhật vị thế:
    - tồn kho;

@@ -52,7 +52,9 @@
     if (tab === 'library' && window.VTLibrary) window.VTLibrary.render();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
-  $('tabBar').addEventListener('click', e => { const b = e.target.closest('.tab-btn'); if (b) showTab(b.dataset.tab); });
+  const isPhone = () => window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
+  // Điện thoại: bấm thẻ ở thanh dưới → về đầu trang (thấy ngay nội dung thẻ mới); bấm lại thẻ đang mở cũng về đầu trang
+  $('tabBar').addEventListener('click', e => { const b = e.target.closest('.tab-btn'); if (!b) return; showTab(b.dataset.tab); if (isPhone()) window.scrollTo(0, 0); });
 
   // ---------- Đồng hồ, phiên giao dịch, độ tươi của giá ----------
   function tick() {
@@ -709,4 +711,38 @@
   }
   loadRole().then(loadData).then(() => { showTab(['overview', 'position', 'contracts', 'hedge', 'board', 'library'].includes(saved) ? saved : 'overview'); connectStream(); loadHistory(); });
   setInterval(loadHistory, 30 * 60 * 1000);
+
+  // ---------- Nút "Quay lại" của điện thoại ----------
+  // Đang mở hộp thoại / Trợ lý / bài đọc: bấm Quay lại (hoặc vuốt lùi) thì đóng lớp trên cùng, không rời khỏi hệ thống.
+  (function phoneBack() {
+    const LAYERS = '.tab-panel.reading:not([hidden]), .modal-overlay.active, .assistant-drawer.open';
+    const CLOSE = '[data-back], .modal-close, [data-kbclose]';
+    let depth = 0, skip = 0;
+    const layers = () => [...document.querySelectorAll(LAYERS)];
+    const sync = () => {
+      const n = layers().length;
+      try {
+        if (n > depth) { while (depth < n) { depth += 1; history.pushState({ vtLayer: depth }, ''); } }
+        else if (n < depth) { skip += 1; history.go(n - depth); depth = n; } // đóng bằng nút trên màn hình → bỏ bớt mục lịch sử đã thêm
+      } catch (e) { depth = n; }
+    };
+    new MutationObserver(sync).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class', 'hidden'] });
+    window.addEventListener('popstate', () => {
+      if (skip) { skip -= 1; return; }
+      const open = layers(); const top = open[open.length - 1]; if (!top) return;
+      depth = Math.max(0, depth - 1);
+      const btn = top.querySelector(CLOSE);
+      if (btn) btn.click(); else top.classList.remove('active', 'open');
+    });
+  })();
+
+  // ---------- Nút Trợ lý nổi: tạm ẩn khi cuộn xuống (đọc không bị che), hiện lại khi cuộn lên ----------
+  (function fabAutoHide() {
+    let lastY = window.scrollY;
+    window.addEventListener('scroll', () => {
+      const y = window.scrollY, d = y - lastY; if (Math.abs(d) < 10) return;
+      document.body.classList.toggle('fab-away', isPhone() && d > 0 && y > 160);
+      lastY = y;
+    }, { passive: true });
+  })();
 })();

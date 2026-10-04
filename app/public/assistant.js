@@ -81,11 +81,13 @@
     const order = { alert: 0, warn: 1, info: 2, ok: 3 };
     return out.sort((a, b) => order[a.lvl] - order[b.lvl]);
   }
-  let stripOpen = true; try { stripOpen = localStorage.getItem('vt_adv') !== '0'; } catch (e) { /* bỏ qua */ }
+  // Điện thoại: mặc định thu gọn (1 ý quan trọng nhất) để nội dung thẻ hiện ngay màn hình đầu; máy nhớ lựa chọn mở/thu
+  let stripOpen = !(window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
+  try { const v = localStorage.getItem('vt_adv'); if (v !== null) stripOpen = v !== '0'; } catch (e) { /* bỏ qua */ }
   function renderStrip() {
     const el = $('adviceStrip'); const st = getState(); if (!el || !st || !st.data) return;
     const items = advice(st); const top = items.slice(0, stripOpen ? 3 : 1); const more = items.length - top.length;
-    el.hidden = false; el.className = `advice-strip lvl-${items[0].lvl}`;
+    el.hidden = false; el.className = `advice-strip lvl-${items[0].lvl}${stripOpen ? '' : ' adv-compact'}`;
     el.innerHTML = `<div class="adv-head"><img src="assets/logo-vietthien.png" alt=""><b>Trợ lý khuyên</b><span class="adv-count">${items.filter(x => x.lvl !== 'ok').length || ''}</span>
         <span class="adv-time">${new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
         <button type="button" class="adv-btn" data-adv="chat">💬 Hỏi Trợ lý</button><button type="button" class="adv-btn adv-toggle" data-adv="toggle" title="${stripOpen ? 'Thu gọn' : 'Mở rộng'}">${stripOpen ? '▴' : '▾'}</button></div>
