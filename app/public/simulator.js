@@ -56,9 +56,10 @@
   const SCENARIOS = { normal: 'Bình thường', partial: 'Khớp từng phần (thị trường mỏng)', fast: 'Thị trường nhanh – trượt giá', reject: 'Bị từ chối (Rejected)', disconnect: 'Mất kết nối – In transit' };
 
   const fresh = () => ({ v: 3, acct: 'SIM-VT01', sym: 'RMF27', qty: 4, confirm: true, fast: true, park: false, otype: 'AUTO', dur: 'DAY',
-    feed: 'sim', cash: 500000000, margin: 97812000, maint: 80, fee: 350000, fx: 25790, scenario: 'normal', trend: 'flat', speed: 1500,
+    feed: 'sim', layout: '', cash: 1000000000, imUsd: 4059, mmUsd: 3612, fee: 350000, fx: 25790, scenario: 'normal', trend: 'flat', speed: 1500,
     lesson: '', start: null, quiz: null, seq: 1, fseq: 1, mk: {}, orders: [], fills: [], log: [] });
   let s = load(); let timer = null, built = false, ticks = 0;
+  const IM = () => Math.round(s.imUsd * s.fx), MM = () => Math.round(s.mmUsd * s.fx);  // ký quỹ ban đầu / duy trì cho 1 lot (đ)
   const view = { center: null, sel: null, mode: 'market', selOrder: '', mod: null, tray: 'working', pending: null, tour: -1, drag: null, tkTouched: false };
   function load() { try { const x = JSON.parse(localStorage.getItem(KEY) || 'null'); return x && x.v === 3 ? { ...fresh(), ...x } : fresh(); } catch (e) { return fresh(); } }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) { /* trình duyệt chặn lưu – vẫn chạy bình thường */ } }
@@ -84,6 +85,17 @@
     }
     m.bars = out.reverse();
   }
+  function seedHist(m) {   // 4 phiên London trước (15:00–23:30 giờ VN), thanh 5 phút, nối liền giá với thanh 1 phút đầu tiên
+    const first = m.bars && m.bars[0]; let p = first ? first[1] : m.last; const out = [];
+    const d = new Date((first ? first[0] : Date.now() / 1000) * 1000); d.setHours(0, 0, 0, 0);
+    for (let days = 0; days < 4;) {
+      d.setDate(d.getDate() - 1); if (d.getDay() === 0 || d.getDay() === 6) continue; days += 1;
+      const t0 = d.getTime() / 1000 + 15 * 3600;
+      for (let k = 101; k >= 0; k--) { const c2 = p, o2 = c2 + (Math.random() < 0.5 ? -1 : 1) * rnd(0, 4); out.push([t0 + k * 300, o2, Math.max(o2, c2) + rnd(0, 3), Math.min(o2, c2) - rnd(0, 3), c2, rnd(15, 140)]); p = o2; }
+    }
+    m.hb = out.reverse();
+  }
+  const simBars = m => { if (!m.bars) seedBars(m); if (!m.hb) seedHist(m); return m.hb.concat(m.bars); };
   function barTick(m, v) {
     if (!m.bars) seedBars(m);
     m.t = (m.t || Math.floor(Date.now() / 60000) * 60) + 60; const prev = m.bars[m.bars.length - 1]; const o2 = prev ? prev[4] : m.last;
@@ -109,6 +121,7 @@
       m.high = Math.max(m.high, m.last); m.low = Math.min(m.low, m.last);
       const v = rnd(1, s.scenario === 'fast' ? 40 : 12); m.vap[m.last] = (m.vap[m.last] || 0) + v; m.tv += v;
       m.hist = (m.hist || []).concat(m.last).slice(-30); barTick(m, v);
+      m.ts = (m.ts || []).concat([[m.t, m.last, v, Math.sign(d)]]).slice(-80);
     });
     s.orders.forEach(tryFill);
     if (ticks % 4 === 0) save();
@@ -120,7 +133,7 @@
     Object.keys(s.mk).forEach(sym => {
       const q = liveRows().find(x => x.Name === sym); if (!q) return; const m = s.mk[sym];
       const last = Math.round(Number(q.Last) || m.last), vol = Number(q.Volume) || 0;
-      if (m.rv !== undefined && vol > m.rv) { m.vap[last] = (m.vap[last] || 0) + (vol - m.rv); m.tv += vol - m.rv; }
+      if (m.rv !== undefined && vol > m.rv) { m.vap[last] = (m.vap[last] || 0) + (vol - m.rv); m.tv += vol - m.rv; m.ts = (m.ts || []).concat([[Math.floor(Date.now() / 1000), last, vol - m.rv, Math.sign(last - m.last)]]).slice(-80); }
       m.rv = vol; m.last = last; m.bid = last; m.ask = last + 1;
       m.high = Math.max(Math.round(Number(q.High) || last), last); m.low = Math.min(Math.round(Number(q.Low) || last), last);
       m.hist = (m.hist || []).concat(last).slice(-30); m.liveAt = q.Time ? new Date(Number(q.Time) * 1000).toLocaleTimeString('vi-VN', { hour12: false }) : clock();
@@ -161,16 +174,16 @@
   }
   function account() {
     const b = book(); let ote = 0, real = 0, mv = 0, reserve = 0, lots = 0;
-    Object.entries(b).forEach(([sym, g]) => { const m = mkt(sym); ote += g.pos ? (m.last - g.avg) * LOT_T * g.pos : 0; real += g.real; mv += Math.abs(g.pos) * s.margin; lots += g.lots; });
+    let mm = 0; Object.entries(b).forEach(([sym, g]) => { const m = mkt(sym); ote += g.pos ? (m.last - g.avg) * LOT_T * g.pos : 0; real += g.real; mv += Math.abs(g.pos) * IM(); mm += Math.abs(g.pos) * MM(); lots += g.lots; });
     // Ký quỹ giữ cho lệnh chờ làm TĂNG vị thế (lệnh Parked chưa lên sàn nên không giữ)
     symbols().concat(Object.keys(b)).filter((x, i, a) => a.indexOf(x) === i).forEach(sym => {
       const pos = (b[sym] || {}).pos || 0; const w = s.orders.filter(o => o.sym === sym && LIVE.includes(o.status));
       const buys = w.filter(o => o.side === 'BUY').reduce((n, o) => n + o.qty - o.filled, 0), sells = w.filter(o => o.side === 'SELL').reduce((n, o) => n + o.qty - o.filled, 0);
-      reserve += Math.max(0, Math.max(Math.abs(pos + buys), Math.abs(pos - sells)) - Math.abs(pos)) * s.margin;
+      reserve += Math.max(0, Math.max(Math.abs(pos + buys), Math.abs(pos - sells)) - Math.abs(pos)) * IM();
     });
     const fees = lots * s.fee, pl = real * s.fx, balance = s.cash + pl - fees, oteV = ote * s.fx;
     const nlv = balance + oteV, pp = balance + oteV; // CQG: Purchasing Power = Balance + MVO + OTE (không có quyền chọn → MVO = 0)
-    const maint = mv * s.maint / 100;
+    const maint = mm;
     return { b, balance, pl, fees, ote: oteV, nlv, pp, mv, reserve, excess: pp - mv - reserve, maint, call: mv > 0 && nlv < maint };
   }
   function increases(o) { const pos = ((book()[o.sym] || {}).pos) || 0; return o.side === 'BUY' ? pos >= 0 || o.qty > -pos : pos <= 0 || o.qty > pos; }
@@ -185,7 +198,7 @@
     }
     const o = { id: 'SIM' + String(s.seq).padStart(5, '0'), num: s.seq++, at: clock(), date: today(), acct: s.acct, sym, side, qty, type, dur: s.dur,
       px: type === 'MKT' ? 0 : Math.round(price), stop: 0, status: 'NEW', filled: 0, avg: 0, note: '', trig: false };
-    if (type === 'STL') { o.stop = Math.round(price); o.px = o.stop + (side === 'BUY' ? 2 : -2); }
+    if (type === 'STL') { o.stop = Math.round(price); o.px = o2.limit ? Math.round(o2.limit) : o.stop + (side === 'BUY' ? 2 : -2); }
     if (s.confirm && !o2.noConfirm) { view.pending = o; paint(); return; }
     send(o);
   }
@@ -193,7 +206,7 @@
     if (s.park && o.type !== 'MKT' && !o.activating) { o.status = 'PARKED'; s.orders.push(o); log(`${o.id} ${o.side} ${o.qty} ${mxv(o.sym)} ${o.type} ${desc(o)} → Parked: lệnh soạn sẵn, CHƯA lên sàn. Bấm Activate khi muốn gửi.`); save(); return paint(); }
     const a = account();
     if (s.scenario === 'reject') { o.status = 'REJECTED'; o.note = 'FCM/sàn từ chối (tài khoản chưa được phép giao dịch mã này hoặc ngoài giờ giao dịch). Đọc lý do, gọi broker – không gửi lặp.'; }
-    else if (increases(o) && a.excess < s.margin * o.qty) { o.status = 'REJECTED'; o.note = `Không đủ Margin Excess: cần ${vnd(s.margin * o.qty)} đ, còn ${vnd(a.excess)} đ. Nạp thêm tiền hoặc giảm số lot.`; }
+    else if (increases(o) && a.excess < IM() * o.qty) { o.status = 'REJECTED'; o.note = `Không đủ Margin Excess: cần ${vnd(IM() * o.qty)} đ (${o.qty} × ${px(s.imUsd)} USD), còn ${vnd(a.excess)} đ. Nạp thêm tiền hoặc giảm số lot.`; }
     if (o.status === 'REJECTED') { if (!s.orders.includes(o)) s.orders.push(o); log(`${o.id} ${o.side} ${o.qty} ${mxv(o.sym)} bị REJECTED – ${o.note}`, 'bad'); save(); return paint(); }
     if (!s.orders.includes(o)) s.orders.push(o);
     if (s.scenario === 'disconnect') {
@@ -277,11 +290,17 @@
     });
     return res;
   }
+  function lastTradingDay(sym) {
+    const q = window.VTEngine && window.VTEngine.parseQuoteName ? window.VTEngine.parseQuoteName(sym) : null; if (!q) return null;
+    const d = new Date(q.year, q.month, 0); while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() - 1);
+    let left = 4; while (left > 0) { d.setDate(d.getDate() - 1); if (d.getDay() !== 0 && d.getDay() !== 6) left -= 1; }
+    return d;
+  }
   const working = () => s.orders.filter(o => o.sym === s.sym && LIVE.includes(o.status) && o.type !== 'MKT');
 
   // ---------- Bài tập tình huống ----------
   function startLesson(id) {
-    const L = LESSONS[id]; const keep = { confirm: s.confirm, fast: s.fast, speed: s.speed, margin: s.margin, maint: s.maint, fee: s.fee, fx: s.fx, qty: s.qty, dur: s.dur };
+    const L = LESSONS[id]; const keep = { confirm: s.confirm, fast: s.fast, speed: s.speed, imUsd: s.imUsd, mmUsd: s.mmUsd, fee: s.fee, fx: s.fx, qty: s.qty, dur: s.dur, layout: s.layout, cm: s.cm };
     setRun(false);
     s = { ...fresh(), ...keep, mk: s.mk, lesson: id || '' }; view.selOrder = ''; view.mod = null; view.pending = null; view.center = null; view.sel = null; view.mode = 'market';
     if (L) {
@@ -418,7 +437,7 @@
   function build() {
     const root = $('simulatorRoot'); if (!root) return;
     root.innerHTML = `<div class="dt">
-      <div class="dt-banner"><span><b>SIMULATION</b> · Sàn giả lập kiểu CQG DOMTrader để đào tạo – không kết nối CQG/MXV, không gửi lệnh thật, không có tiền thật.</span><button type="button" class="dt-tourbtn" data-tour="start">🎓 Hướng dẫn từng bước</button></div>
+      <div class="dt-banner"><span><b>SIMULATION</b> · Sàn giả lập kiểu CQG DOMTrader để đào tạo – không kết nối CQG/MXV, không gửi lệnh thật, không có tiền thật.</span><span class="dt-bnbtns"><button type="button" class="dt-tourbtn" data-tour="start">🎓 Hướng dẫn từng bước</button><button type="button" class="dt-layoutbtn" data-act="layout-m">📱 Giao diện CQG Mobile</button></span></div>
       <div class="dt-grid">
         <section class="dt-win">
           <div class="dt-syms" id="dtSyms" role="tablist" aria-label="Mã hợp đồng"></div>
@@ -478,12 +497,12 @@
             <div class="dt-form">
               <label>Kịch bản<select id="setScn" class="dt-sel">${Object.entries(SCENARIOS).map(([k, l]) => `<option value="${k}">${l}</option>`).join('')}</select></label>
               <label>Tốc độ giá<select id="setSpeed" class="dt-sel"><option value="2500">Chậm</option><option value="1500">Vừa</option><option value="700">Nhanh</option></select></label>
-              <label>Ký quỹ ban đầu / lot (đ)<input id="setMargin" class="dt-in" type="number" inputmode="numeric"></label>
-              <label>Ký quỹ duy trì (% ban đầu)<input id="setMaint" class="dt-in" type="number" inputmode="numeric"></label>
+              <label>Initial margin / lot (USD)<input id="setIm" class="dt-in" type="number" inputmode="numeric"></label>
+              <label>Maintenance margin / lot (USD)<input id="setMm" class="dt-in" type="number" inputmode="numeric"></label>
               <label>Phí / lot / chiều (đ)<input id="setFee" class="dt-in" type="number" inputmode="numeric"></label>
               <label>Tỷ giá USD (đ)<input id="setFx" class="dt-in" type="number" inputmode="numeric"></label>
             </div>
-            <p class="dt-note">Ký quỹ, phí là <b>số mẫu</b> – sửa theo bảng ký quỹ MXV và biểu phí của thành viên kinh doanh hiện hành.</p>
+            <p class="dt-note">Ký quỹ mặc định theo màn CHI TIẾT của CQG (LRCX26, 04/10/2026): ban đầu 4.059 USD, duy trì 3.612 USD/lot – sàn đổi theo biến động. Phí là <b>số mẫu</b> – sửa theo biểu phí của thành viên MXV.</p>
             <div class="dt-row"><button type="button" class="dt-btn" data-act="eod">⏭ Hết phiên (DAY hết hiệu lực)</button><button type="button" class="dt-btn" data-act="sync">↺ Lấy giá London thật</button><button type="button" class="dt-btn" data-act="reset">🗑 Xóa toàn bộ dữ liệu giả lập</button></div></details>
         </aside>
       </div>
@@ -496,6 +515,18 @@
   }
   // Biểu đồ: mô phỏng → thanh 1 phút giả lập; 📡 giá thật → thanh 5 phút máy chủ ghi từ giá London
   let chart = null, liveBars = { sym: '', at: 0, bars: [] };
+  function chartData(sym) {
+    const m = mkt(sym); if (!m.bars) seedBars(m); const mk = s.fills.filter(f => f.sym === sym && f.t).map(f => ({ t: f.t, side: f.side, px: f.px }));
+    if (s.feed === 'live') {
+      if (liveBars.sym !== sym || Date.now() - liveBars.at > 15000) {
+        liveBars.at = Date.now();
+        fetch('/api/bars?sym=' + encodeURIComponent(sym), { cache: 'no-store' }).then(r => r.json()).then(d => { liveBars = { sym, at: Date.now(), bars: d.bars || [] }; paint(); }).catch(() => {});
+      }
+      const bars = liveBars.sym === sym ? liveBars.bars : [];
+      return { bars, base: 300, marks: mk, src: 'live', note: bars.length < 10 ? 'Máy chủ mới bắt đầu ghi thanh giá London – biểu đồ dày dần theo từng phiên (≈ 15:00–23:30 giờ VN).' : '' };
+    }
+    return { bars: simBars(m), base: 60, marks: mk, src: 'sim', note: '' };
+  }
   function chartPaint() {
     if (!chart) return; const m = mkt(s.sym); if (!m.bars) seedBars(m); const mk = s.fills.filter(f => f.sym === s.sym && f.t).map(f => ({ t: f.t, side: f.side, px: f.px }));
     $('dtChartSym').textContent = mxv(s.sym);
@@ -509,7 +540,7 @@
       return chart.setData(bars, 300, bars.length < 10 ? 'Máy chủ mới bắt đầu ghi thanh giá London – biểu đồ dày dần theo từng phiên (≈ 15:00–23:30 giờ VN).' : '', mk);
     }
     $('dtChartSrc').textContent = '· giá mô phỏng (mỗi nhịp = 1 phút giả lập)';
-    chart.setData(m.bars || [], 60, '', mk);
+    chart.setData(simBars(m), 60, '', mk);
   }
   function rowsHtml() {
     const m = mkt(s.sym); const N = phone() ? 9 : 12; if (view.center === null) view.center = m.last;
@@ -553,8 +584,11 @@
       + `<td>${o.status === 'PARKED' ? `<button type="button" data-actv="${o.id}">Activate</button>` : ''}${['WORKING', 'PARTIAL', 'PARKED'].includes(o.status) && o.type !== 'MKT' ? `<button type="button" data-mod="${o.id}">Modify</button>` : ''}${['WORKING', 'PARTIAL', 'PARKED'].includes(o.status) ? `<button type="button" data-cxl="${o.id}">Cancel</button>` : ''}</td></tr>`).join('');
     return `<thead><tr><th>Status</th><th>Account</th><th>B/S</th><th>Size</th><th>Symbol</th><th>Type/Dur</th><th>Price</th><th>Filled</th><th>Avg Fill Price</th><th>Place Time</th><th>Order #</th><th></th></tr></thead><tbody>${body || `<tr><td colspan="12" class="dt-empty">Không có lệnh ở mục này.</td></tr>`}</tbody>`;
   }
+  const mobileLayout = () => (s.layout ? s.layout === 'mobile' : phone());
   function paint() {
-    const root = $('simulatorRoot'); if (!root) return; if (!built || !root.querySelector('.dt')) build();
+    const root = $('simulatorRoot'); if (!root) return;
+    if (mobileLayout() && window.VTSimM) { built = false; bindRoot(); return window.VTSimM.paint(); }
+    if (!built || !root.querySelector('.dt')) build();
     const m = mkt(s.sym); const a = account(); const g = a.b[s.sym] || { pos: 0, avg: 0 }; const ote = g.pos ? (m.last - g.avg) * LOT_T * g.pos : 0;
     $('dtSyms').innerHTML = symbols().map(x => `<button type="button" role="tab" data-sym="${x}" class="${x === s.sym ? 'on' : ''}">${mxv(x)}<small>${x}</small></button>`).join('');
     $('dtAcctName').innerHTML = `${esc(s.acct)} · DEMO · ${s.feed === 'live' ? `<b class="dt-live">📡 LIVE London${m.liveAt ? ' ' + m.liveAt : ''}${londonOpen() ? '' : ' · sàn nghỉ'}</b>` : '🎲 giá mô phỏng'}`;
@@ -580,10 +614,10 @@
       <tr><td>OTE <small>lãi/lỗ đang mở</small></td><td class="${a.ote >= 0 ? 'b' : 's'}">${sg(a.ote, vnd)}</td></tr>
       <tr><td>OTE+P/L</td><td>${sg(a.ote + a.pl, vnd)}</td></tr>
       <tr><td>NLV <small>giá trị tài khoản</small></td><td><b>${vnd(a.nlv)}</b></td></tr>
-      <tr><td>Margin Value <small>ký quỹ ban đầu cho vị thế</small></td><td>${vnd(a.mv)}</td></tr>
-      <tr><td>Maintenance <small>mức duy trì ${s.maint}%</small></td><td>${vnd(a.maint)}</td></tr>
+      <tr><td>Margin Value <small>ban đầu ${px(s.imUsd)} USD/lot</small></td><td>${vnd(a.mv)}</td></tr>
+      <tr><td>Maintenance <small>duy trì ${px(s.mmUsd)} USD/lot</small></td><td>${vnd(a.maint)}</td></tr>
       <tr><td>Purchasing Power <small>Balance + OTE</small></td><td>${vnd(a.pp)}</td></tr>
-      <tr><td>Margin Excess <small>còn đặt lệnh được (đã trừ lệnh chờ ${vnd(a.reserve)})</small></td><td class="${a.excess >= 0 ? '' : 's'}"><b>${vnd(a.excess)}</b> <small>≈ ${Math.max(0, Math.floor(a.excess / s.margin))} lot</small></td></tr>
+      <tr><td>Margin Excess <small>còn đặt lệnh được (đã trừ lệnh chờ ${vnd(a.reserve)})</small></td><td class="${a.excess >= 0 ? '' : 's'}"><b>${vnd(a.excess)}</b> <small>≈ ${Math.max(0, Math.floor(a.excess / IM()))} lot</small></td></tr>
       <tr><td>Phí đã trả</td><td>${vnd(a.fees)}</td></tr></tbody></table>${a.call ? '<div class="dt-call">⚠️ MARGIN CALL: NLV dưới mức ký quỹ duy trì – phải nộp thêm tiền hoặc giảm vị thế.</div>' : ''}
       <div class="dt-row"><button type="button" class="dt-btn" data-act="dep">+ Nạp 300 triệu</button></div>`;
     // Phân tích trực tiếp
@@ -613,13 +647,13 @@
     const fd = root.querySelector('[data-act="feed"]'); if (fd) { fd.textContent = s.feed === 'live' ? '🎲 Về mô phỏng' : '📡 Giá thật'; fd.classList.toggle('on', s.feed === 'live'); }
     const setScn = $('setScn'); if (setScn && document.activeElement !== setScn) setScn.value = s.scenario;
     const sp = $('setSpeed'); if (sp && document.activeElement !== sp) sp.value = String(s.speed);
-    [['setMargin', 'margin'], ['setMaint', 'maint'], ['setFee', 'fee'], ['setFx', 'fx']].forEach(([id, k]) => { const el = $(id); if (el && document.activeElement !== el) el.value = s[k]; });
+    [['setIm', 'imUsd'], ['setMm', 'mmUsd'], ['setFee', 'fee'], ['setFx', 'fx']].forEach(([id, k]) => { const el = $(id); if (el && document.activeElement !== el) el.value = s[k]; });
   }
 
   // ---------- Sự kiện ----------
   function scrollBy(n) { const m = mkt(s.sym); view.center = (view.center === null ? m.last : view.center) + n; paint(); }
   function center() { view.center = null; view.mode = 'market'; view.sel = null; paint(); }
-  function selectOrder(id) { view.selOrder = id || ''; view.mod = null; $('dtLadder').focus({ preventScroll: true }); paint(); }
+  function selectOrder(id) { view.selOrder = id || ''; view.mod = null; if ($('dtLadder')) $('dtLadder').focus({ preventScroll: true }); paint(); }
   function placeAt(side, p, e) {
     if (!s.fast) { view.mode = 'browse'; view.sel = p; log(`Fast-click đang tắt: đã chọn giá ${px(p)} – kéo ô giá vào cột BUY/SELL hoặc bấm ←/→ để đặt lệnh.`); return paint(); }
     newOrder(side, 'AUTO', p, undefined, undefined, { stl: !!(e && e.ctrlKey) });
@@ -627,8 +661,10 @@
   function bind() {
     const root = $('simulatorRoot');
     $('tkPx').addEventListener('input', () => { view.tkTouched = true; });
-    bindLadder();
-    if (root.dataset.dtBound) return; // khung ngoài giữ nguyên qua các lần vẽ lại → chỉ gắn sự kiện một lần
+    bindLadder(); bindRoot();
+  }
+  function bindRoot() {
+    const root = $('simulatorRoot'); if (!root || root.dataset.dtBound) return; // khung ngoài giữ nguyên qua các lần vẽ lại → chỉ gắn sự kiện một lần
     root.dataset.dtBound = '1';
     root.addEventListener('click', e => {
       if (view.dragged) { view.dragged = false; return; }
@@ -637,7 +673,7 @@
       const cell = e.target.closest('td[data-col]');
       if (cell) {
         const p = Number(cell.dataset.p), side = cell.dataset.col; const sel = s.orders.find(o => o.id === view.selOrder);
-        $('dtLadder').focus({ preventScroll: true }); view.pending = null;
+        if ($('dtLadder')) $('dtLadder').focus({ preventScroll: true }); view.pending = null;
         if (sel && sel.side === side && sel.sym === s.sym && ['WORKING', 'PARTIAL', 'PARKED'].includes(sel.status)) { modify(sel, p); view.selOrder = ''; return; }
         return placeAt(side, p, e);
       }
@@ -666,6 +702,8 @@
         case 'run': return setRun(!timer);
         case 'eod': return endOfDay();
         case 'feed': return setFeed(s.feed === 'live' ? 'sim' : 'live');
+        case 'layout-m': return setLayout('mobile');
+        case 'layout-d': return setLayout('desktop');
         case 'ok': { const o = view.pending; view.pending = null; if (o) send(o); return; }
         case 'no': view.pending = null; log('Đã bỏ lệnh ở bước xác nhận – chưa gửi gì lên sàn.'); return paint();
         case 'ticket': { const side = $('tkSide').value, type = $('tkType').value, p = Number($('tkPx').value) || m.last; view.tkTouched = false; return newOrder(side, type, p); }
@@ -686,7 +724,7 @@
       else if (id === 'dtLesson') return startLesson(e.target.value);
       else if (id === 'setScn') { s.scenario = e.target.value; log(`Kịch bản: ${SCENARIOS[s.scenario]}.`); }
       else if (id === 'setSpeed') { s.speed = Number(e.target.value); if (timer) setRun(true); }
-      else if (['setMargin', 'setMaint', 'setFee', 'setFx'].includes(id)) { const k = { setMargin: 'margin', setMaint: 'maint', setFee: 'fee', setFx: 'fx' }[id]; s[k] = Math.max(id === 'setFx' ? 1000 : 0, Number(e.target.value) || 0); }
+      else if (['setIm', 'setMm', 'setFee', 'setFx'].includes(id)) { const k = { setIm: 'imUsd', setMm: 'mmUsd', setFee: 'fee', setFx: 'fx' }[id]; s[k] = Math.max(id === 'setFx' ? 1000 : 0, Number(e.target.value) || 0); }
       else if (id === 'tkPx') view.tkTouched = true;
       else return;
       save(); paint();
@@ -762,6 +800,10 @@
       paint();
     });
   }
-  function render() { if (!built || !$('simulatorRoot') || !$('simulatorRoot').querySelector('.dt')) build(); paint(); }
+  function render() { if (mobileLayout() && window.VTSimM) { bindRoot(); return window.VTSimM.paint(); } if (!built || !$('simulatorRoot') || !$('simulatorRoot').querySelector('.dt')) build(); paint(); }
+  function setLayout(l) { s.layout = l; built = false; save(); const r = $('simulatorRoot'); if (r) r.innerHTML = ''; render(); }
+  window.VTSim = { get s() { return s; }, view, mkt, book, account, newOrder, send, cancel, cancelSide, modify, activate, toMarket, flatten, reverse, setRun, setFeed, setLayout,
+    symbols, mxv, desc, STATUS, FIX, LIVE, roundTrips, working, rowsHtml, LESSONS, SCENARIOS, startLesson, coach, answerQuiz, analysis, save, log, endOfDay, chartData, lastTradingDay, londonOpen,
+    IM, MM, timerOn: () => !!timer, phone, px, vnd, sg, esc, clock, LOT_T };
   window.VTSimulator = { render };
 })();
