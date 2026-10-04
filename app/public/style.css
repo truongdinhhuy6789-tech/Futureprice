@@ -862,6 +862,32 @@ body {
   .bottom-grid { grid-template-columns: 1fr; }
 }
 
+/* ===================== NGHIÊN CỨU GIÁ – KL – HĐ MỞ ===================== */
+.research-summary { display:flex; justify-content:space-between; gap:12px; align-items:center; padding:12px 14px; margin-bottom:12px; border:1px solid var(--border-color); border-radius:10px; background:#0F172A; }
+.research-summary b { color:var(--gold); } .research-summary span { color:var(--text-muted); font-size:13px; }
+.research-table td small { display:block; margin-top:3px; color:var(--text-muted); font-size:11px; line-height:1.35; }
+.flow-badge { display:inline-block; padding:3px 7px; border-radius:999px; font-size:11px; font-weight:700; background:#243044; color:var(--text-secondary); }
+.flow-badge.up { background:rgba(34,197,94,.14); color:#4ADE80; } .flow-badge.down { background:rgba(239,68,68,.14); color:#F87171; }
+.flow-badge.warn { background:rgba(251,191,36,.14); color:#FBBF24; }
+.research-guide { margin-top:16px; } .research-guide h3 { margin:0 0 10px; }
+.flow-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:12px; }
+.flow-grid div { padding:10px; border:1px solid var(--border-color); border-radius:8px; background:#0F172A; }
+.flow-grid b,.flow-grid span { display:block; } .flow-grid span { color:var(--text-muted); font-size:12px; margin-top:4px; }
+@media (max-width:768px) { .flow-grid { grid-template-columns:1fr 1fr; } .research-summary { align-items:flex-start; flex-direction:column; } .research-table { min-width:780px; } }
+
+/* Màn hình minh họa CQG trong Thư viện – chỉ mô phỏng, không gửi lệnh */
+.cqg-demo { margin:12px 0 18px; overflow:hidden; border:1px solid #38506f; border-radius:12px; background:#08111f; color:#dbeafe; font-family:var(--font-mono); }
+.cqg-demo-head,.cqg-demo-foot { display:flex; justify-content:space-between; gap:10px; padding:10px 12px; background:#111d31; font-size:12px; }
+.cqg-demo-head b { color:#fbbf24; } .cqg-demo-head span,.cqg-demo-foot { color:#94a3b8; }
+.cqg-demo-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:#24354d; }
+.cqg-demo-grid div { padding:9px 10px; background:#0d1829; } .cqg-demo-grid small,.cqg-demo-grid b { display:block; }
+.cqg-demo-grid small { color:#8090a8; margin-bottom:3px; } .cqg-dom { display:grid; grid-template-columns:1fr 1.3fr 1fr; align-items:stretch; text-align:center; }
+.cqg-dom .sell,.cqg-dom .buy { display:flex; align-items:center; justify-content:center; font-weight:800; letter-spacing:.04em; }
+.cqg-dom .sell { color:#fca5a5; background:rgba(239,68,68,.13); } .cqg-dom .buy { color:#86efac; background:rgba(34,197,94,.13); }
+.cqg-dom .price { display:flex; flex-direction:column; border-width:0 1px; border-style:solid; border-color:#263750; }
+.cqg-dom .price>* { padding:5px; border-bottom:1px solid #1d2c42; } .cqg-dom .price strong { color:#fbbf24; background:#17243a; }
+@media (max-width:600px) { .cqg-demo-grid { grid-template-columns:1fr 1fr; } .cqg-demo-head,.cqg-demo-foot { flex-direction:column; } }
+
 /* Modal Overlay & Box */
 .modal-overlay {
   position: fixed;

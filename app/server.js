@@ -33,6 +33,7 @@ function loadPositions() {
   catch (e) { return engine.defaultData(); }
 }
 let positionsAt = null; // lần lưu vị thế gần nhất – màn hình hỏi giá định kỳ dùng để biết có số liệu mới
+const clients = new Set(); // khai báo trước lần tạo dữ liệu đầu tiên vì savePositions có phát SSE
 // Trước mỗi lần lưu: giữ bản cũ trong data/backups (200 bản gần nhất) để khôi phục khi sửa nhầm qua link
 const BACKUP_DIR = path.join(DATA_DIR, 'backups');
 const BACKUP_KEEP = 200;
@@ -61,7 +62,6 @@ if (!fs.existsSync(POSITION_FILE)) savePositions(engine.defaultData());
 positionsAt = loadPositions().updatedAt || null;
 
 // ---------- Luồng thời gian thực (SSE) ----------
-const clients = new Set();
 function broadcast(event, payload) {
   const msg = `event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`;
   for (const res of clients) { try { res.write(msg); } catch (e) { clients.delete(res); } }
@@ -88,7 +88,7 @@ async function fetchQuotes() {
     market.quotes = data; market.ok = true; market.error = null; market.fetchedAt = new Date().toISOString();
     if (sig !== lastSignature) { lastSignature = sig; market.changedAt = market.fetchedAt; broadcast('quotes', snapshot()); recordHistory(data); }
     else broadcast('heartbeat', { ok: true, fetchedAt: market.fetchedAt, changedAt: market.changedAt });
-    telegramBot.checkPriceAlerts(data).catch(() => {});
+    telegramBot.checkPriceAlerts(data, loadHistory()).catch(() => {});
   } catch (err) {
     market.ok = false; market.error = err.message;
     broadcast('heartbeat', { ok: false, error: err.message, fetchedAt: market.fetchedAt, changedAt: market.changedAt });
@@ -113,8 +113,14 @@ function recordHistory(data) {
   try {
     const day = new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10); // ngày theo giờ Việt Nam
     const pick = list => Object.fromEntries((list || []).map(q => [q.Name, engine.num(q.Last)]).filter(([, v]) => v > 0));
+    // Giữ nguyên robusta/arabica dạng số cho biểu đồ cũ; market bổ sung dữ liệu nghiên cứu.
+    const metrics = list => Object.fromEntries((list || []).map(q => [q.Name, {
+      last: engine.num(q.Last), previous: engine.num(q.Previous), change: engine.num(q.Change),
+      volume: engine.num(q.Volume), openInterest: engine.num(q.OpInt), time: engine.num(q.Time)
+    }]).filter(([, v]) => v.last > 0));
     const hist = loadHistory();
-    hist[day] = { ...(hist[day] || {}), robusta: pick(data.coffee_liffe), arabica: pick(data.coffee_ice), updated: data.updated };
+    hist[day] = { ...(hist[day] || {}), robusta: pick(data.coffee_liffe), arabica: pick(data.coffee_ice),
+      market: { robusta: metrics(data.coffee_liffe), arabica: metrics(data.coffee_ice), brazil: metrics(data.brazil_coffee) }, updated: data.updated };
     // Giá nhân xô và tỷ giá trong ngày (cho bảng "Theo ngày" của công cụ tính trừ lùi)
     if (market.domestic && market.domestic.avg) hist[day].domestic = market.domestic.avg;
     if (market.fx && market.fx.transfer) hist[day].fx = market.fx.transfer;

@@ -4,7 +4,7 @@
 window.VTKnowledge = {
   cats: [
     ['gia', '💲 Giá & quy đổi'], ['chatluong', '📏 Chất lượng'], ['hopdong', '📝 Hợp đồng & chốt giá'], ['phongho', '🛡️ Phòng hộ & sàn'], ['tinhhuong', '🎬 Tình huống futures'],
-    ['vithe', '⚖️ Quản trị vị thế'], ['thitruong', '🌦️ Phân tích thị trường'], ['tuvan', '🎯 Tư vấn & nguyên tắc'], ['thuatngu', '📖 Thuật ngữ'], ['huongdan', '📘 Hướng dẫn sử dụng']
+    ['vithe', '⚖️ Quản trị vị thế'], ['thitruong', '🌦️ Phân tích thị trường'], ['tuvan', '🎯 Tư vấn & nguyên tắc'], ['thuatngu', '📖 Thuật ngữ'], ['cqg', '📟 CQG & thực hành'], ['huongdan', '📘 Hướng dẫn sử dụng']
   ],
   articles: [
     // ===================== GIÁ & QUY ĐỔI =====================
@@ -559,6 +559,69 @@ window.VTKnowledge = {
         <li><b>Nút Quay lại</b> của điện thoại (hoặc vuốt lùi trên iPhone) đóng hộp thoại, Trợ lý, bài đang đọc – không thoát khỏi hệ thống.</li>
         <li><b>Đọc tài liệu:</b> trong bài có thanh trên cùng: <b>← Thư viện</b>, số thứ tự bài, <b>A− / A+</b> chỉnh cỡ chữ (máy nhớ cỡ chữ); cuối bài có <b>Bài trước / Bài sau</b>. Bảng rộng thì vuốt ngang trong bảng.</li>
         <li><b>Ma trận vị thế</b>: cột tên dính bên trái, vuốt ngang để xem các kỳ; ô có nền xanh nhạt là số lấy từ sổ – <b>bấm vào ô</b> để xem và sửa lệnh/hợp đồng tạo ra số đó.</li></ol>` },
+    { id: 'hd-mua-chot-chua-giao', cat: 'hopdong', title: 'Hợp đồng mua đã chốt giá, chưa giao hàng', tags: 'hop dong mua chot gia chua giao hang duong vi the',
+      sum: 'Công ty đã khóa giá mua nhưng chưa nhận hàng; số lượng được tính dương vào hàng thực.',
+      body: `<p><b>Khái niệm:</b> công ty đã ký mua và đã biết giá cuối cùng, nhưng nhà cung cấp chưa giao/nhập kho.</p><p><b>Dấu trong ma trận: + (dương)</b> vì công ty đã có quyền nhận hàng với giá đã khóa; về rủi ro giá, đây là vị thế dư hàng.</p><p><b>Ví dụ:</b> mua 38,4 tấn giá cố định, chưa nhận → dòng này <b>+38,4 t</b>. Khi nhận đủ hàng, hợp đồng rời dòng này và hàng được phản ánh theo quy trình tồn kho.</p><p><b>Cần theo dõi:</b> hạn giao, rủi ro nhà cung cấp không giao và lệnh bán futures đã liên kết.</p>` },
+    { id: 'hd-mua-giao-chua-chot', cat: 'hopdong', title: 'Hợp đồng mua đã giao hàng, chưa chốt giá', tags: 'hop dong mua giao hang chua chot gia ptbf diff',
+      sum: 'Hàng đã về nhưng giá mua còn chạy theo sàn; chưa được coi là đã khóa giá hàng thực.',
+      body: `<p><b>Khái niệm:</b> công ty đã nhận hàng theo hợp đồng trừ lùi/PTBF nhưng người bán chưa chốt giá London.</p><p><b>Dấu trong ma trận: + (dương)</b> theo lượng hàng công ty đã nhận nhưng còn rủi ro giá phải trả. Giá London tăng trước khi chốt thì giá mua thường tăng.</p><p><b>Ví dụ:</b> đã nhận 20 tấn, chưa chốt → dòng này <b>+20 t</b>. Chốt 8 tấn thì phần chưa chốt còn 12 tấn.</p><p><b>Cần theo dõi:</b> hạn chốt giá, kỳ tham chiếu và phòng hộ phù hợp với phần chưa chốt.</p>` },
+    { id: 'hd-ban-chot-chua-giao', cat: 'hopdong', title: 'Hợp đồng bán đã chốt giá, chưa giao hàng', tags: 'hop dong ban chot gia chua giao hang am vi the short',
+      sum: 'Công ty đã khóa giá bán nhưng chưa giao hàng; nghĩa vụ giao được tính âm vào hàng thực.',
+      body: `<p><b>Khái niệm:</b> công ty đã bán với giá cuối cùng đã xác định, nhưng chưa giao đủ hàng cho khách.</p><p><b>Dấu trong ma trận: − (âm)</b> vì công ty đang có nghĩa vụ giao hàng; nếu chưa mua đủ hàng thì giá thị trường tăng gây bất lợi.</p><p><b>Ví dụ:</b> bán 38,4 tấn giá cố định, chưa giao → dòng này <b>−38,4 t</b>. Nếu đồng thời mua 38,4 tấn đã chốt chưa nhận thì hai dòng cân bằng về lượng.</p><p><b>Cần theo dõi:</b> nguồn hàng, lịch tàu/giao, kỳ phòng hộ và rủi ro khách hủy.</p>` },
+    { id: 'hd-ban-giao-chua-chot', cat: 'hopdong', title: 'Hợp đồng bán đã giao hàng, chưa chốt giá', tags: 'hop dong ban giao hang chua chot gia ptbf diff am',
+      sum: 'Hàng đã giao cho khách nhưng giá bán còn chạy theo sàn; phần chưa chốt vẫn mang rủi ro giá.',
+      body: `<p><b>Khái niệm:</b> công ty đã giao hàng theo hợp đồng trừ lùi/PTBF nhưng khách chưa chốt giá London.</p><p><b>Dấu trong ma trận: − (âm)</b> vì hàng đã ra khỏi công ty nhưng doanh thu cuối cùng chưa khóa. Giá London giảm trước khi chốt thường làm giá bán giảm.</p><p><b>Ví dụ:</b> đã giao 30 tấn, khách mới chốt 10 tấn → dòng này còn <b>−20 t</b>.</p><p><b>Cần theo dõi:</b> hạn chốt của khách, kỳ tham chiếu và lệnh futures bảo vệ phần giá chưa chốt.</p>` },
+    { id: 'cqg-la-gi', cat: 'cqg', title: 'CQG là gì và dùng phần nào cho phòng hộ cà phê?', tags: 'cqg desktop trader qtrader mobile domtrader mxv barchart',
+      sum: 'CQG là nền tảng dữ liệu và chuyển lệnh; Futureprice quản trị hợp đồng/vị thế, còn CQG là nơi đặt và theo dõi lệnh thật.',
+      body: `<p><b>CQG</b> cung cấp dữ liệu thị trường, biểu đồ, DOM và chuyển lệnh đến sàn. Tại Việt Nam, tài khoản và luồng tiền đi qua thành viên kinh doanh của MXV; không nộp tiền trực tiếp cho website Futureprice.</p>
+        <table><tr><th>Công cụ</th><th>Dùng để làm gì</th></tr><tr><td>CQG Desktop</td><td>Chạy trên trình duyệt; xem bảng giá, biểu đồ, lệnh và vị thế.</td></tr><tr><td>CQG Trader/QTrader</td><td>Phần mềm máy tính; QTrader có phân tích và biểu đồ sâu hơn.</td></tr><tr><td>CQG Mobile</td><td>Theo dõi và xử lý lệnh trên điện thoại khi di chuyển.</td></tr><tr><td>DOMTrader</td><td>Thang giá bid/offer để đặt, sửa và hủy lệnh.</td></tr></table>
+        <p><b>Phân vai:</b> Futureprice tính lượng cần phòng hộ và lưu liên kết hợp đồng; CQG đặt lệnh thật; báo cáo CQG/MXV và xác nhận môi giới là chứng từ đối chiếu cuối cùng.</p>
+        <p><b>Nguồn học:</b> <a href="https://help.cqg.com/cqgic/25/Documents/domtrader.htm" target="_blank" rel="noopener">CQG DOMTrader</a> · <a href="https://mxv.com.vn/giao-dich/quy-trinh-mo-tai-khoan-i1.html" target="_blank" rel="noopener">hướng dẫn phần mềm của MXV</a> · <a href="https://hanghoa.anfin.vn/blog/cqg-la-gi/" target="_blank" rel="noopener">bài tổng quan CQG</a>.</p>` },
+    { id: 'cqg-phim-dieu-khien', cat: 'cqg', title: 'CQG DOMTrader: nút và phím điều khiển cần biết', tags: 'cqg domtrader phim tat keyboard buy sell cancel delete home limit market bid offer',
+      sum: 'Bảng nút/phím cơ bản kèm nguyên tắc an toàn: focus đúng cửa sổ, kiểm tra loại lệnh và tập trên demo trước.',
+      body: `<table><tr><th>Thao tác mặc định</th><th>Ý nghĩa</th></tr><tr><td>↑ / ↓</td><td>Di chuyển chọn mức giá trên DOM.</td></tr><tr><td>←</td><td>Mua; cách đặt Market/Limit phụ thuộc chế độ đang chọn.</td></tr><tr><td>→</td><td>Bán; phải nhìn rõ chế độ và mức giá trước khi bấm.</td></tr><tr><td>Alt + ← / →</td><td>Đặt tại best bid / best offer theo cấu hình mặc định.</td></tr><tr><td>Home hoặc Esc</td><td>Trở về Market Order mode.</td></tr><tr><td>Delete</td><td>Hủy lệnh Working đang được chọn.</td></tr><tr><td>Ctrl + Home</td><td>Đưa thang giá về vùng giá thị trường.</td></tr></table>
+        <p><b>Cảnh báo:</b> phím có thể được người dùng cấu hình lại và chỉ tác động lên cửa sổ đang focus. Market mode và price-browse mode có thể cho kết quả khác nhau dù cùng phím. Luôn bật xác nhận lệnh khi mới sử dụng và tập bằng tài khoản demo.</p>
+        <p>Nguồn: <a href="https://www.cqg.com/sites/default/files/archive/docs/KeyboardShortcuts.pdf" target="_blank" rel="noopener">CQG Keyboard Shortcuts</a> và <a href="https://help.cqg.com/cqgic/25/Documents/keyboardkeyspreferences.htm" target="_blank" rel="noopener">Keyboard Keys Preferences</a>.</p>` },
+    { id: 'cqg-demo-mua-bao-hiem', cat: 'cqg', title: 'Demo online: MUA futures để bảo hiểm hợp đồng bán', tags: 'demo online cqg mua futures long bao hiem hop dong ban thao tac domtrader',
+      sum: 'Mô phỏng từ hợp đồng bán 38,4 tấn → tính 4 lot → đặt lệnh MUA CQG → xác nhận khớp → ghi vào Futureprice.',
+      body: `<div class="cqg-demo"><div class="cqg-demo-head"><b>DEMO CQG · KHÔNG ĐẶT LỆNH THẬT</b><span>RMF27 · Robusta London</span></div>
+        <div class="cqg-demo-grid"><div><small>Tài khoản</small><b>DEMO-VT</b></div><div><small>Số lượng</small><b>4 lot</b></div><div><small>Loại lệnh</small><b>LIMIT</b></div><div><small>Giá đặt</small><b>3.450 USD/t</b></div></div>
+        <div class="cqg-dom"><div class="sell">SELL</div><div class="price"><span>3.452</span><b>3.451</b><strong>3.450</strong><span>3.449</span></div><div class="buy">BUY 4</div></div>
+        <div class="cqg-demo-foot">Trạng thái minh họa: <b>WORKING → FILLED</b> · Ký quỹ khả dụng phải được kiểm tra trước lệnh</div></div>
+        <h3>Tình huống</h3><p>Công ty đã <b>BÁN 38,4 tấn giá cố định</b> nhưng chưa mua đủ hàng. Vị thế hàng thực là <b>−38,4 tấn</b>; giá tăng sẽ làm chi phí mua hàng tăng. Phòng hộ tham khảo: <b>MUA 4 lot Robusta</b> (4 × 10 = 40 tấn), còn lệch +1,6 tấn.</p>
+        <h3>Các bước trên CQG online</h3><ol><li><b>Đăng nhập đúng tài khoản:</b> mở CQG Desktop/Trader từ đường dẫn do thành viên MXV cung cấp; kiểm tra tên tài khoản và trạng thái kết nối.</li>
+        <li><b>Chọn đúng mã:</b> chọn Robusta London và kỳ tham chiếu của hợp đồng, ví dụ <b>LRCF27/RMF27</b>. Không chọn nhầm Arabica hoặc kỳ khác.</li>
+        <li><b>Kiểm tra tiền:</b> xem Available/Excess Margin; bảo đảm đủ ký quỹ, phí và quỹ dự phòng khi giá đi ngược chiều.</li>
+        <li><b>Nhập số lượng:</b> 38,4 ÷ 10 = 3,84 → làm tròn theo quy định nội bộ thành <b>4 lot</b>. Kiểm tra lại đơn vị trước khi gửi.</li>
+        <li><b>Chọn loại lệnh:</b> LIMIT nếu muốn kiểm soát giá; MARKET chỉ khi cần khớp ngay và chấp nhận trượt giá. Demo dùng <b>BUY 4 LIMIT 3.450</b>.</li>
+        <li><b>Kiểm tra lần cuối:</b> Account · BUY · LRCF27 · 4 lots · LIMIT · 3.450. Bật cửa sổ xác nhận lệnh khi đang học.</li>
+        <li><b>Gửi và theo dõi:</b> trạng thái <b>Working</b> nghĩa là chưa khớp; <b>Filled</b> mới là đã khớp. Partial Fill phải ghi đúng số lot đã khớp. Rejected cần đọc lý do, không bấm gửi liên tục.</li>
+        <li><b>Ghi vào Futureprice:</b> Giao dịch → Hàng ảo → Lệnh sàn mới; chọn <b>MUA, 4 lot, RMF27</b>, nhập ngày/giá khớp và liên kết hợp đồng bán. Chỉ chọn “Đã khớp” khi CQG báo Filled.</li>
+        <li><b>Đóng bảo hiểm:</b> khi đã mua hàng thật/chốt xong rủi ro, thực hiện lệnh đối ứng theo phê duyệt; đối chiếu CQG, Futureprice và xác nhận môi giới cuối ngày.</li></ol>
+        <p><b>Nguyên tắc:</b> hệ thống chỉ tính và hướng dẫn; người có thẩm quyền mới được gửi lệnh thật. Thực hành trên tài khoản demo trước, không dùng phím nhanh khi chưa quen.</p>` },
+    { id: 'barchart-volume-oi', cat: 'cqg', title: 'Đọc Barchart: giá, Volume và Open Interest', tags: 'barchart volume open interest oi hd mo gia tin hieu dong tien',
+      sum: 'Volume là giao dịch trong phiên; Open Interest là số hợp đồng còn mở. Kết hợp hai số để mô tả dòng tiền, không dùng riêng lẻ để ra lệnh.',
+      body: `<ul><li><b>Last/Change:</b> giá gần nhất và thay đổi so với phiên trước.</li><li><b>Volume:</b> số hợp đồng đã giao dịch trong phiên; volume cao cho thấy hoạt động mạnh nhưng không cho biết riêng bên mua hay bán thắng.</li><li><b>Open Interest (OI):</b> số hợp đồng còn mở, thường được xác nhận theo phiên và có thể trễ so với giá intraday.</li></ul>
+        <table><tr><th>Giá</th><th>OI</th><th>Cách đọc tham khảo</th></tr><tr><td>↑</td><td>↑</td><td>Tiền mới vào chiều tăng</td></tr><tr><td>↓</td><td>↑</td><td>Tiền mới vào chiều giảm</td></tr><tr><td>↑</td><td>↓</td><td>Có thể mua bù vị thế bán</td></tr><tr><td>↓</td><td>↓</td><td>Có thể thanh lý vị thế mua</td></tr></table>
+        <p><b>Quy trình:</b> chọn đúng mã/kỳ hạn → so ít nhất hai phiên → xem Volume/OI → đối chiếu spread và COT → quay lại nhu cầu phòng hộ của công ty. Không gọi một biến động đơn lẻ là “cá mập mua/bán”.</p>
+        <p>Nguồn: <a href="https://www.barchart.com/education/technical-indicators/open_interest" target="_blank" rel="noopener">Barchart Open Interest</a>. Trên Futureprice, thẻ 🔬 Nghiên cứu thực hiện phép so sánh này theo từng kỳ hạn.</p>` },
+    { id: 'cqg-quy-trinh-chot', cat: 'cqg', title: 'CQG: quy trình chốt giá và kiểm soát lệnh', tags: 'cqg domtrader dat lenh limit market stop huy sua chot gia mxv',
+      sum: 'Checklist an toàn từ nhu cầu phòng hộ → kiểm tra tiền → đặt lệnh CQG → xác nhận khớp → ghi vào hệ thống.',
+      body: `<ol><li><b>Xác định nhu cầu thật:</b> hợp đồng nào, chiều mua/bán, kỳ tham chiếu, số tấn; Robusta 1 lot = 10 tấn. Hệ thống đề xuất số lot nhưng người phụ trách phải duyệt.</li>
+        <li><b>Kiểm tra trước lệnh:</b> đúng tài khoản, đúng mã kỳ hạn, số lot, chiều, loại lệnh; kiểm tra Available/Excess Margin và quỹ dự phòng.</li>
+        <li><b>Đặt trên CQG:</b> ưu tiên lệnh giới hạn khi không cần khớp tức thời; Market có thể trượt giá. DOMTrader hiển thị thang giá, bid/offer và lệnh chờ.</li>
+        <li><b>Xác nhận:</b> xem trạng thái Working/Filled/Rejected; chỉ khi Filled mới bấm ✔ Khớp trong Sổ lệnh Futureprice và nhập giá khớp thật.</li>
+        <li><b>Đối chiếu cuối phiên:</b> CQG/MXV ↔ Futureprice ↔ xác nhận môi giới; sai số phải xử lý ngay. Theo dõi ký quỹ và FND mỗi ngày.</li></ol>
+        <p><b>Phím CQG mặc định thường gặp:</b> ↑/↓ chọn giá; ← mua, → bán; Alt+←/→ tại bid/offer; Home về Market mode; Delete hủy lệnh đang chọn. Phím có thể được cấu hình khác và phụ thuộc cửa sổ đang focus — phải tập bằng tài khoản demo trước.</p>
+        <p><b>Nguồn:</b> tài liệu DOMTrader/Keyboard Keys của CQG và hướng dẫn phần mềm của MXV. Không thao tác phím nhanh trên tài khoản thật khi chưa được công ty/môi giới đào tạo.</p>` },
+    { id: 'cqg-tien-ky-quy', cat: 'cqg', title: 'Tiền cần chuẩn bị cho 1 lot và quy trình nộp tiền', tags: 'cqg mxv ky quy tien 1 lot nap tien phi giao dich margin call robusta',
+      sum: 'Không lấy giá hợp đồng làm số tiền phải nộp; cần ký quỹ ban đầu + phí + quỹ dự phòng biến động, theo mức MXV/thành viên đang áp dụng.',
+      body: `<p><b>Công thức quản trị:</b> tiền chuẩn bị cho 1 lot = <b>ký quỹ ban đầu hiện hành</b> + phí mở/đóng lệnh + phí dữ liệu/phần mềm phân bổ + <b>quỹ dự phòng biến động</b>.</p>
+        <ul><li>Mức ký quỹ và biểu phí thay đổi theo sản phẩm, thời điểm và thành viên kinh doanh; lấy số chính thức trong CQG/MXV hoặc xác nhận môi giới trước khi đặt lệnh.</li>
+        <li>Với Robusta, giá biến động 1 USD/tấn làm P/L thay đổi khoảng <b>10 USD/lot</b>. Dự phòng kịch bản +300 đến +500 USD/tấn khi đang bán futures tương ứng khoảng 3.000–5.000 USD/lot, ngoài ký quỹ bắt buộc.</li>
+        <li>Nộp tiền đúng tài khoản ngân hàng do thành viên MXV cung cấp; ghi đúng nội dung/mã tài khoản; lưu chứng từ; chờ tiền hiện trong Available Margin rồi mới giao dịch.</li>
+        <li>Không chuyển tiền theo số tài khoản nhận qua tin nhắn lạ. Khi thiếu ký quỹ: nộp thêm hoặc giảm vị thế theo quy định nội bộ, không chờ đến sát hạn.</li></ul>
+        <p><b>Biểu phí:</b> vào website MXV và thành viên đang mở tài khoản để lấy bản mới nhất; số trên bài viết bên ngoài chỉ dùng tham khảo vì có thể đã đổi.</p>` },
     { id: 'quy-trinh-ghi-giao-dich', cat: 'huongdan', title: 'Quy trình ghi hợp đồng, phòng hộ và giao hàng', tags: 'quy trinh ghi hop dong hedge lenh cho khop ke hoach giao hang sua nhanh ma tran',
       sum: 'Ký hợp đồng → ghi sổ → 🛡️ Hedge tạo lệnh chờ → khớp trên sàn thì bấm ✔ Khớp → ghi lịch giao → giao xong thì xác nhận.',
       body: `<ol><li><b>Ký hợp đồng:</b> thẻ 📒 Giao dịch → <b>➕ Hợp đồng mới</b> (mua/bán, giá cố định hoặc trừ lùi, số tấn, kỳ tham chiếu). Vị thế tự cập nhật.</li>

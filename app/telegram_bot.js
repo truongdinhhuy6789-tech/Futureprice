@@ -5,7 +5,7 @@ const engine = require('./public/engine');
 
 const CONFIG_PATH = path.join(__dirname, 'data', 'bot_config.json');
 const BRAND = 'VIỆT THIÊN COFFEE GROUP';
-const DEFAULT_CONFIG = { enabled: false, botToken: '', chatId: '', alertThresholdUsd: 20, lastUpdateOffset: 0 };
+const DEFAULT_CONFIG = { enabled: false, botToken: '', chatId: '', alertThresholdUsd: 20, flowAlerts: false, lastUpdateOffset: 0 };
 
 function loadConfig() {
   try { return { ...DEFAULT_CONFIG, ...JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8')) }; }
@@ -16,7 +16,7 @@ function saveConfig(cfg) { fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, nul
 // Không bao giờ trả token đầy đủ ra giao diện web
 function publicConfig() {
   const c = loadConfig(); const t = c.botToken || '';
-  return { enabled: !!c.enabled, chatId: c.chatId, alertThresholdUsd: c.alertThresholdUsd,
+  return { enabled: !!c.enabled, chatId: c.chatId, alertThresholdUsd: c.alertThresholdUsd, flowAlerts: !!c.flowAlerts,
     hasToken: !!t, tokenMasked: t ? `${t.slice(0, 6)}…${t.slice(-4)}` : '' };
 }
 function updateConfig(body) {
@@ -25,6 +25,7 @@ function updateConfig(body) {
   if (typeof body.botToken === 'string' && body.botToken.trim()) c.botToken = body.botToken.trim(); // để trống = giữ token cũ
   if (typeof body.chatId === 'string') c.chatId = body.chatId.trim();
   c.alertThresholdUsd = engine.pick(body.alertThresholdUsd, 20);
+  c.flowAlerts = !!body.flowAlerts;
   saveConfig(c);
 }
 
@@ -113,7 +114,8 @@ const HELP = `🤖 <b>${BRAND} — BOT VỊ THẾ</b>\n\n• <code>/gia</code> g
 
 // ---------- Cảnh báo biến động giá ----------
 let lastNotifiedPrice = null;
-async function checkPriceAlerts(quotes) {
+let lastFlowAlertKey = '';
+async function checkPriceAlerts(quotes, history) {
   const cfg = loadConfig();
   const rb = front(quotes, 'coffee_liffe');
   if (!cfg.enabled || !cfg.botToken || !cfg.chatId || !rb) return;
@@ -123,6 +125,16 @@ async function checkPriceAlerts(quotes) {
   if (Math.abs(diff) >= engine.pick(cfg.alertThresholdUsd, 20)) {
     await sendTelegramMessage(`🚨 <b>${BRAND} — CẢNH BÁO GIÁ LONDON</b>\n\n• ${rb.Name} (${rb.Month}): <code>${engine.fmt(price, 0)} USD/tấn</code>\n• Biến động: <b>${diff > 0 ? '🟢 TĂNG' : '🔴 GIẢM'} ${engine.fmt(Math.abs(diff), 0)} USD</b> so với ${engine.fmt(lastNotifiedPrice, 0)}\n\n👉 Kiểm tra vị thế: http://localhost:3456`);
     lastNotifiedPrice = price;
+  }
+  if (cfg.flowAlerts && history) {
+    const flow = engine.analyzeMarketFlow(history, quotes, 'robusta');
+    const signals = flow.rows.filter(r => r.code === 'LONG_BUILD' || r.code === 'SHORT_BUILD');
+    const key = `${flow.latestDay}|${signals.map(r => `${r.name}:${r.code}:${r.oiChange}`).join('|')}`;
+    if (signals.length && key !== lastFlowAlertKey) {
+      const lines = signals.map(r => `• <b>${r.name}</b>: ${r.label} · giá ${engine.signed(r.priceChange)} · HĐ mở ${engine.signed(r.oiChange)}`);
+      await sendTelegramMessage(`🔬 <b>${BRAND} — DÒNG TIỀN GIÁ/HĐ MỞ</b>\n\n${lines.join('\n')}\n\n<i>Tín hiệu bối cảnh, không phải khuyến nghị mua/bán.</i>`);
+      lastFlowAlertKey = key;
+    }
   }
 }
 

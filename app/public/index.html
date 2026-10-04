@@ -49,6 +49,7 @@
       <button class="tab-btn" data-tab="contracts" role="tab"><span class="tab-ico">📒</span><span class="tab-txt">Giao dịch</span></button>
       <button class="tab-btn" data-tab="hedge" role="tab"><span class="tab-ico">🛡️</span><span class="tab-txt">Phòng hộ</span></button>
       <button class="tab-btn" data-tab="board" role="tab"><span class="tab-ico">🌐</span><span class="tab-txt">Bảng giá</span></button>
+      <button class="tab-btn" data-tab="research" role="tab"><span class="tab-ico">🔬</span><span class="tab-txt">Nghiên cứu</span></button>
       <button class="tab-btn" data-tab="library" role="tab"><span class="tab-ico">📚</span><span class="tab-txt">Kiến thức</span></button>
     </nav>
 
@@ -268,6 +269,18 @@
           <p class="section-desc board-note">Ngày thông báo đầu tiên là ước tính (Robusta: 4 ngày làm việc, Arabica: 7 ngày làm việc trước ngày làm việc đầu tiên của tháng giao hàng; chưa trừ ngày lễ). Nên đảo/đóng vị thế trước ngày này.</p>
         </section>
       </section>
+      <!-- ================= 5. NGHIÊN CỨU DÒNG TIỀN ================= -->
+      <section class="tab-panel" data-panel="research" hidden>
+        <section class="section-card research-card">
+          <div class="section-header"><div class="title-wrap">
+            <h2 class="section-title">🔬 NGHIÊN CỨU GIÁ – KHỐI LƯỢNG – HĐ MỞ</h2>
+            <p class="section-desc">Theo dõi dòng tiền theo từng kỳ hạn từ dữ liệu giacaphe.com. Đây là công cụ giải thích bối cảnh để quản trị phòng hộ, không phải khuyến nghị mua/bán.</p>
+          </div></div>
+          <div id="researchSummary"></div>
+          <div class="table-scroll"><table class="data-table research-table" id="researchTable"></table></div>
+          <div class="research-guide" id="researchGuide"></div>
+        </section>
+      </section>
       <!-- ================= 5. THƯ VIỆN KIẾN THỨC ================= -->
       <section class="tab-panel" data-panel="library" hidden>
         <section class="section-card lib-card-wrap">
@@ -300,6 +313,7 @@
         <div class="form-group"><label>2. Bot Token (từ @BotFather):</label><input type="text" id="tgBotToken" class="form-control" autocomplete="off"></div>
         <div class="form-group"><label>3. Chat ID / Group ID:</label><input type="text" id="tgChatId" class="form-control" placeholder="Ví dụ: 123456789 hoặc -1001234567890"></div>
         <div class="form-group"><label>4. Ngưỡng cảnh báo biến động London:</label><div class="input-with-addon"><input type="number" id="tgThreshold" class="form-control" step="5"><span class="addon">USD/tấn</span></div></div>
+        <div class="form-group"><label>5. Cảnh báo dòng tiền:</label><div class="toggle-wrap"><input type="checkbox" id="tgFlowAlerts" class="checkbox-custom"><label for="tgFlowAlerts" style="font-weight:600;cursor:pointer;">Báo khi Giá–HĐ mở xác nhận tiền mới vào mạnh</label></div></div>
         <div class="modal-status" id="tgStatus"></div>
       </div>
       <div class="modal-footer"><button id="btnTgTest" class="btn btn-secondary">📨 Gửi thử</button><button id="btnTgSave" class="btn btn-primary">💾 Lưu cấu hình</button></div>

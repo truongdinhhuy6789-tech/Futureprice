@@ -568,6 +568,40 @@
     return { open, text: `${s.label}: ${open ? 'đang giao dịch' : (weekday ? 'ngoài giờ giao dịch' : 'nghỉ cuối tuần')}` };
   }
 
+  // ---------- Nghiên cứu Giá – Khối lượng – HĐ mở ----------
+  // Chỉ mô tả dòng tiền theo quy tắc kinh điển; không phải tín hiệu mua/bán.
+  function analyzeMarketFlow(history, quotes, market) {
+    const key = market || 'robusta';
+    const quoteKey = key === 'arabica' ? 'coffee_ice' : key === 'brazil' ? 'brazil_coffee' : 'coffee_liffe';
+    const days = Object.keys(history || {}).filter(d => history[d] && history[d].market && history[d].market[key]).sort();
+    const latestDay = days[days.length - 1] || '';
+    const previousDay = days[days.length - 2] || '';
+    const latest = latestDay ? history[latestDay].market[key] : {};
+    const previous = previousDay ? history[previousDay].market[key] : {};
+    const live = Object.fromEntries((((quotes || {})[quoteKey]) || []).map(q => [q.Name, {
+      last: num(q.Last), previous: num(q.Previous), change: num(q.Change), volume: num(q.Volume), openInterest: num(q.OpInt), time: num(q.Time)
+    }]));
+    const names = [...new Set([...Object.keys(latest || {}), ...Object.keys(live)])];
+    const rows = names.map(name => {
+      const cur = live[name] && live[name].last ? live[name] : latest[name];
+      const prev = previous[name];
+      if (!cur) return null;
+      const priceChange = prev ? round2(cur.last - num(prev.last)) : num(cur.change);
+      const oiChange = prev && cur.openInterest && prev.openInterest ? round2(cur.openInterest - num(prev.openInterest)) : null;
+      const volumeChange = prev && prev.volume ? round2((cur.volume - num(prev.volume)) / num(prev.volume) * 100) : null;
+      let code = 'WAIT', label = 'Chưa đủ 2 phiên', tone = 'neutral', detail = 'Cần HĐ mở của ít nhất hai phiên để xác nhận.';
+      if (oiChange !== null && priceChange !== 0 && oiChange !== 0) {
+        if (priceChange > 0 && oiChange > 0) { code = 'LONG_BUILD'; label = 'Tiền mới vào chiều tăng'; tone = 'up'; detail = 'Giá tăng và HĐ mở tăng: xu hướng tăng được dòng tiền mới củng cố.'; }
+        else if (priceChange < 0 && oiChange > 0) { code = 'SHORT_BUILD'; label = 'Tiền mới vào chiều giảm'; tone = 'down'; detail = 'Giá giảm và HĐ mở tăng: vị thế bán mới đang mở thêm.'; }
+        else if (priceChange > 0 && oiChange < 0) { code = 'SHORT_COVER'; label = 'Mua bù vị thế bán'; tone = 'warn'; detail = 'Giá tăng nhưng HĐ mở giảm: có thể là short covering, độ bền cần theo dõi.'; }
+        else if (priceChange < 0 && oiChange < 0) { code = 'LONG_LIQUIDATION'; label = 'Thanh lý vị thế mua'; tone = 'warn'; detail = 'Giá giảm và HĐ mở giảm: có thể là long liquidation.'; }
+      }
+      return { name, latestDay, previousDay, last: num(cur.last), priceChange, volume: num(cur.volume), volumeChange,
+        openInterest: num(cur.openInterest), oiChange, code, label, tone, detail };
+    }).filter(Boolean);
+    return { market: key, latestDay, previousDay, rows };
+  }
+
   // ---------- Mô hình phòng hộ xuất khẩu (4 chiến lược) ----------
   const HEDGE_DEFAULTS = { qa: 300, lotSize: 10, f0: 0, fobTarget: 0, fxManual: 0, days: 90, kPut: 0, pPut: 120, kCall: 0, pCall: 120, hybridRatio: 0.5, feePerLot: 26 };
   const SCENARIOS = [
@@ -627,7 +661,7 @@
 
   return { MONTH_LETTERS, LETTER_MONTHS, LOT_TONNES, NUM_COLUMNS, ROWS, GROUPS, DATA_VERSION,
     num, pick, round2, fmt, signed, contractCode,
-    parseQuoteName, mxvCode, firstNoticeDay, daysBetween, sessionStatus, HEDGE_DEFAULTS, SCENARIOS, simulateHedge, parseCode, contractLabel, isExpired, nextContracts,
+    parseQuoteName, mxvCode, firstNoticeDay, daysBetween, sessionStatus, analyzeMarketFlow, HEDGE_DEFAULTS, SCENARIOS, simulateHedge, parseCode, contractLabel, isExpired, nextContracts,
     emptyMatrix, defaultData, sampleData, normalize, rollColumns,
     CONTRACT_ROWS, CONTAINER_TONNES, basisForShipment, normalizeContract, contractState, contractRows, effectiveMatrix, fixDeadline, contractSummary,
     TRADE_ROWS, LEGACY_ROWS, normalizeTrade, tradeLots, orderLots, isFilled, pendingLots, tradeRows, futuresBook, linkedLots, contractExposure, todayIso,

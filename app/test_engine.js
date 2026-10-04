@@ -59,6 +59,15 @@ t('Spread & cấu trúc thị trường', () => {
   assert.strictEqual(s[0].value, 23); assert.strictEqual(s[0].structure, 'Inverted'); assert.strictEqual(s[1].value, null);
 });
 
+t('Phân tích Giá – Khối lượng – HĐ mở giữ đúng 4 trạng thái', () => {
+  const hist = {
+    '2026-10-02': { market: { robusta: { RMX26: { last: 3300, volume: 1000, openInterest: 5000 } } } },
+    '2026-10-03': { market: { robusta: { RMX26: { last: 3320, volume: 1200, openInterest: 5100 } } } }
+  };
+  const r = E.analyzeMarketFlow(hist, { coffee_liffe: [{ Name: 'RMX26', Last: 3320, Volume: 1200, OpInt: 5100 }] }, 'robusta').rows[0];
+  assert.strictEqual(r.code, 'LONG_BUILD'); assert.strictEqual(r.priceChange, 20); assert.strictEqual(r.oiChange, 100); assert.strictEqual(r.volumeChange, 20);
+});
+
 t('Giá FOB từ trừ lùi', () => assert.deepStrictEqual(E.computeFob(3367, -50, 25790, 700), { fobUsd: 3317, fobVndKg: 85545, domesticVndKg: 84845 }));
 
 t('Số có dấu không hiện "+-0"', () => {

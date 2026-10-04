@@ -48,6 +48,7 @@
     if (tab === 'overview') renderOverview();
     if (tab === 'hedge') renderHedge();
     if (tab === 'board') renderBoard();
+    if (tab === 'research') renderResearch();
     if (tab === 'contracts' && window.VTContracts) window.VTContracts.render();
     if (tab === 'library' && window.VTLibrary) window.VTLibrary.render();
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -194,6 +195,7 @@
     renderCalcOptions(); calculateFob(); renderSpreads();
     if (state.tab === 'overview') renderOverview();
     if (state.tab === 'board') renderBoard(changed);
+    if (state.tab === 'research') renderResearch();
     if (state.tab === 'hedge') renderHedge();
     refreshAssistant();
   }
@@ -233,6 +235,10 @@
     const html = [];
     // Dòng hợp đồng (📒 hàng thật) và 2 dòng Robusta sàn (📉 hàng ảo) lấy số từ thẻ Giao dịch (chỉ đọc); tồn kho, Arabica, dòng theo dõi vẫn nhập tay
     const eff = E.effectiveMatrix(state.data); const TRADE_KEYS = Object.values(E.TRADE_ROWS);
+    const ROW_KB = {
+      buy_fixed_unshipped: 'hd-mua-chot-chua-giao', buy_unfixed_shipped: 'hd-mua-giao-chua-chot',
+      sell_fixed_unshipped: 'hd-ban-chot-chua-giao', sell_unfixed_shipped: 'hd-ban-giao-chua-chot'
+    };
     const rowHtml = r => {
       const kind = E.CONTRACT_ROWS.includes(r.key) ? 'ct' : TRADE_KEYS.includes(r.key) ? 'tr' : '';
       const cells = cols.map(c => {
@@ -242,7 +248,8 @@
       }).join('');
       const tag = kind === 'ct' ? ' <button type="button" class="ledger-tag" data-goto="contracts" title="Mở Sổ hợp đồng">📒 sổ HĐ</button>'
         : kind === 'tr' ? ' <button type="button" class="ledger-tag" data-goto="contracts" title="Mở sổ Lệnh sàn">📉 lệnh sàn</button>' : '';
-      return `<tr class="data-row${kind ? ' ledger-row' : ''}"><td class="row-label">${r.label} (${r.unit === 'lot' ? 'lot' : 'tấn'})${tag}</td>${cells}<td class="row-sum" id="sum_${r.key}">0.00</td></tr>`;
+      const info = ROW_KB[r.key] ? ` <button type="button" class="kb-i kb-mini" data-kb="${ROW_KB[r.key]}" title="Xem khái niệm và ví dụ">ⓘ</button>` : '';
+      return `<tr class="data-row${kind ? ' ledger-row' : ''}"><td class="row-label">${r.label} (${r.unit === 'lot' ? 'lot' : 'tấn'})${info}${tag}</td>${cells}<td class="row-sum" id="sum_${r.key}">0.00</td></tr>`;
     };
     const subtotal = (id, label, gold) => `<tr class="${gold ? 'highlight-net-position-row' : 'subtotal-row'}"><td class="row-label bold">${label}</td>${cols.map((c, i) => `<td class="${gold ? 'net-val' : 'calc-val'} bold" id="${id}_${i}">0.00</td>`).join('')}<td class="${gold ? 'net-val bold total-highlight' : 'calc-val bold total-cell'}" id="${id}_sum">0.00</td></tr>`;
     ['physical', 'futures', 'diff', 'memo'].forEach(g => {
@@ -479,6 +486,26 @@
     if (window.VTGrades) window.VTGrades.render();
   }
 
+  // ---------- 5. Nghiên cứu dòng tiền (không làm thay đổi vị thế/công thức cũ) ----------
+  function renderResearch() {
+    const a = E.analyzeMarketFlow(state.history, state.quotes, 'robusta');
+    const rows = a.rows || [];
+    const strong = rows.filter(r => r.code === 'LONG_BUILD' || r.code === 'SHORT_BUILD');
+    $('researchSummary').innerHTML = `<div class="research-summary"><b>${strong.length ? `${strong.length} kỳ hạn có tiền mới vào` : 'Đang tích lũy dữ liệu theo phiên'}</b>`
+      + `<span>So sánh ${esc(a.previousDay || 'chưa có phiên trước')} → ${esc(a.latestDay || 'hôm nay')}</span></div>`;
+    $('researchTable').innerHTML = `<thead><tr><th>Kỳ hạn</th><th>Giá</th><th>Δ Giá</th><th>Khối lượng</th><th>Δ KL</th><th>HĐ mở</th><th>Δ HĐ mở</th><th>Đánh giá</th></tr></thead><tbody>`
+      + (rows.map(r => `<tr><td><b>${esc(r.name)}</b><small>${esc(((((state.quotes || {}).coffee_liffe || []).find(q => q.Name === r.name)) || {}).Month || '')}</small></td>`
+        + `<td>${fmt(r.last, 0)}</td><td class="${r.priceChange > 0 ? 'up' : r.priceChange < 0 ? 'down' : ''}">${signed(r.priceChange, 0)}</td>`
+        + `<td>${fmt(r.volume, 0)}</td><td>${r.volumeChange === null ? '—' : signed(r.volumeChange, 0) + '%'}</td><td>${fmt(r.openInterest, 0)}</td>`
+        + `<td class="${r.oiChange > 0 ? 'up' : r.oiChange < 0 ? 'down' : ''}">${r.oiChange === null ? '—' : signed(r.oiChange, 0)}</td>`
+        + `<td><span class="flow-badge ${r.tone}">${esc(r.label)}</span><small>${esc(r.detail)}</small></td></tr>`).join('')
+        || '<tr><td colspan="8" class="muted">Chưa có dữ liệu. Hệ thống sẽ tự lưu từ phiên tiếp theo.</td></tr>') + '</tbody>';
+    $('researchGuide').innerHTML = `<h3>Cách đọc nhanh</h3><div class="flow-grid">`
+      + `<div><b>Giá ↑ · HĐ mở ↑</b><span>Tiền mới vào chiều tăng</span></div><div><b>Giá ↓ · HĐ mở ↑</b><span>Tiền mới vào chiều giảm</span></div>`
+      + `<div><b>Giá ↑ · HĐ mở ↓</b><span>Mua bù vị thế bán</span></div><div><b>Giá ↓ · HĐ mở ↓</b><span>Thanh lý vị thế mua</span></div></div>`
+      + `<p class="section-desc">HĐ mở thường được chốt theo phiên và có thể trễ so với giá trong ngày. Luôn đối chiếu volume, spread, COT và nhu cầu phòng hộ thực tế; không dùng một chỉ số để tự động vào lệnh.</p>`;
+  }
+
   // ---------- Tính giá trừ lùi linh hoạt (gốc: giá nhân xô theo ngày) ----------
   function renderCalcOptions() {
     const sel = $('calcMonthSelect'); const fp = state.data.fobParams;
@@ -596,7 +623,7 @@
     } catch (e) { setDirty(true); toast('Lỗi lưu dữ liệu: ' + e.message, 'error'); }
     finally { setTimeout(() => { state.saving = false; }, 500); }
   }
-  async function loadHistory() { try { state.history = await api('/api/history'); fillCompareOptions(); if (state.tab === 'overview') renderCurve(); if (state.data) calculateFob(); } catch (e) { /* bỏ qua */ } }
+  async function loadHistory() { try { state.history = await api('/api/history'); fillCompareOptions(); if (state.tab === 'overview') renderCurve(); if (state.tab === 'research') renderResearch(); if (state.data) calculateFob(); } catch (e) { /* bỏ qua */ } }
 
   // ---------- Sự kiện ----------
   $('positionBody').addEventListener('input', e => {
@@ -683,14 +710,14 @@
     $('telegramModal').classList.add('active'); $('tgStatus').className = 'modal-status';
     try {
       const c = await api('/api/telegram-config');
-      $('tgEnabled').checked = c.enabled; $('tgChatId').value = c.chatId || ''; $('tgThreshold').value = c.alertThresholdUsd || 20;
+      $('tgEnabled').checked = c.enabled; $('tgChatId').value = c.chatId || ''; $('tgThreshold').value = c.alertThresholdUsd || 20; $('tgFlowAlerts').checked = !!c.flowAlerts;
       $('tgBotToken').value = ''; $('tgBotToken').placeholder = c.hasToken ? `Đã lưu: ${c.tokenMasked} (để trống nếu giữ nguyên)` : 'Ví dụ: 789123456:AAFlkjas...';
     } catch (e) { tgStatus('Không tải được cấu hình', false); }
   });
   $('btnCloseTelegramModal').addEventListener('click', () => $('telegramModal').classList.remove('active'));
   $('telegramModal').addEventListener('click', e => { if (e.target === $('telegramModal')) $('telegramModal').classList.remove('active'); });
   $('btnTgSave').addEventListener('click', async () => {
-    const r = await api('/api/telegram-config', { enabled: $('tgEnabled').checked, botToken: $('tgBotToken').value, chatId: $('tgChatId').value, alertThresholdUsd: $('tgThreshold').value });
+    const r = await api('/api/telegram-config', { enabled: $('tgEnabled').checked, botToken: $('tgBotToken').value, chatId: $('tgChatId').value, alertThresholdUsd: $('tgThreshold').value, flowAlerts: $('tgFlowAlerts').checked });
     tgStatus(r.success ? '✅ Đã lưu cấu hình Telegram' : '❌ ' + r.error, r.success);
   });
   $('btnTgTest').addEventListener('click', async () => {
@@ -707,7 +734,7 @@
   buildHedgeInputs();
   let saved = 'overview'; try { saved = localStorage.getItem('vt_tab') || 'overview'; } catch (e) { /* bỏ qua */ }
   // Link mở thẳng một thẻ: #tong-quan, #vi-the, #hop-dong, #phong-ho, #bang-gia
-  const HASH_TAB = { '#tong-quan': 'overview', '#vi-the': 'position', '#hop-dong': 'contracts', '#giao-dich': 'contracts', '#phong-ho': 'hedge', '#bang-gia': 'board', '#kien-thuc': 'library' };
+  const HASH_TAB = { '#tong-quan': 'overview', '#vi-the': 'position', '#hop-dong': 'contracts', '#giao-dich': 'contracts', '#phong-ho': 'hedge', '#bang-gia': 'board', '#nghien-cuu': 'research', '#kien-thuc': 'library' };
   if (HASH_TAB[location.hash]) saved = HASH_TAB[location.hash];
   if (location.hash.startsWith('#kien-thuc/')) saved = 'library';
   async function loadRole() {
@@ -720,7 +747,7 @@
         : '✏️ Chỉnh sửa · <a href="/logout">Đăng xuất</a>';
     } catch (e) { state.role = 'viewer'; }
   }
-  loadRole().then(loadData).then(() => { showTab(['overview', 'position', 'contracts', 'hedge', 'board', 'library'].includes(saved) ? saved : 'overview'); connectStream(); loadHistory(); });
+  loadRole().then(loadData).then(() => { showTab(['overview', 'position', 'contracts', 'hedge', 'board', 'research', 'library'].includes(saved) ? saved : 'overview'); connectStream(); loadHistory(); });
   setInterval(loadHistory, 30 * 60 * 1000);
 
   // ---------- Nút "Quay lại" của điện thoại ----------

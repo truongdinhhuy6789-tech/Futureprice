@@ -420,7 +420,7 @@
     const items = (data.contracts || []).filter(c => c.basis === code || extra.has(c.id)).map(c => ({ c, st: E.contractState(c) }))
       .filter(x => !x.st.closed).map(x => ({ ...x, part: E.round2(part(x.c, x.st)) || 0 })).filter(x => x.part);
     const rows = items.map(({ c, st, part: p }) => `<tr><td><b>${esc(c.no)}</b><small>${dmy(c.date)}</small></td><td><span class="ct-badge ${c.side}">${SIDE[c.side]}</span> ${esc(c.party || '')}<small>${fmt(st.qty, 1)} t${c.grade ? ' · ' + esc(c.grade) : ''}${st.plannedT ? ` · kế hoạch giao ${dmy(st.nextShip)}` : ''}</small></td><td><b>${signed(p, 1)} t</b></td>`
-      + `<td><div class="ct-actions"><button class="btn btn-sm btn-outline" data-act="cellCt" data-id="${esc(c.id)}">✏️ Sửa</button>${st.delStatus !== 'done' ? `<button class="btn btn-sm btn-outline" data-act="cellDeliver" data-id="${esc(c.id)}">🚚 ${c.side === 'buy' ? 'Nhận' : 'Giao'}</button>` : ''}</div></td></tr>`).join('');
+      + `<td><div class="ct-actions"><button class="btn btn-sm btn-outline" data-act="cellCt" data-id="${esc(c.id)}">✏️ Sửa</button>${st.delStatus !== 'done' ? `<button class="btn btn-sm btn-outline" data-act="cellDeliver" data-id="${esc(c.id)}">🚚 ${c.side === 'buy' ? 'Nhận' : 'Giao'}</button>` : ''}<button class="btn btn-sm btn-outline" data-act="cellDelCt" data-id="${esc(c.id)}" title="Xóa hợp đồng nhập sai hoặc dữ liệu mẫu">🗑 Xóa</button></div></td></tr>`).join('');
     openModal(`📒 ${esc(row.label || '')} – ${esc(lbl)}`,
       `<p class="ct-info">Ô này đang tính <b>${signed(v, 1)} t</b>, cộng tự động từ sổ hợp đồng. Sửa hợp đồng (số lượng, chốt giá, lịch giao) thì ô tự cập nhật.</p>`
       + (items.length ? `<table class="ct-table cell-list"><tbody>${rows}</tbody></table>` : '<p class="muted">Không có hợp đồng nào đổ vào ô này.</p>'),
@@ -437,6 +437,11 @@
     if (act === 'cellNew') return newTrade({ month: code });
     if (act === 'cellCt' && c) return openForm(c, false);
     if (act === 'cellDeliver' && c) return openDeliver(c);
+    if (act === 'cellDelCt' && c && confirm(`Xóa hợp đồng ${c.no || ''} (${SIDE[c.side]} ${fmt(c.qty, 2)} t – ${c.party || ''})?\nVị thế sẽ tính lại; lệnh sàn liên kết được giữ lại nhưng bỏ liên kết. Bản cũ vẫn còn trong sao lưu.`)) {
+      S().data.contracts = S().data.contracts.filter(x => x.id !== c.id);
+      (S().data.trades || []).forEach(t => { if (t.link === c.id) t.link = ''; });
+      closeModal(); return A.ledgerChanged(`🗑 Đã xóa hợp đồng ${c.no}`);
+    }
     if (act === 'cellNewCt') return newContract();
   }
 
