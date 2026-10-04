@@ -1889,3 +1889,43 @@ details.dt-card[open] summary { margin-bottom: 8px; }
   .dt-ana-g { grid-template-columns: repeat(3, 1fr); }
   .dt-tourbtn { width: 100%; min-height: 44px; font-size: 14px; }
 }
+
+/* Sàn giả lập – bố cục theo CQG: tab mã, Buy MKT / Sell MKT ở đầu DOM, Parked, kéo-thả, so sánh, thắng/thua */
+.dt-syms { display: flex; gap: 2px; padding: 4px 4px 0; background: #23262e; overflow-x: auto; scrollbar-width: none; }
+.dt-syms::-webkit-scrollbar { display: none; }
+.dt-syms button { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-start; padding: 4px 10px; min-height: 36px; background: #1a1d23; border: 1px solid #3a3f4a; border-bottom: none; border-radius: 4px 4px 0 0; color: var(--dt-dim); font-family: var(--font-mono); font-size: 12.5px; font-weight: 700; cursor: pointer; line-height: 1.15; }
+.dt-syms button small { font-size: 9.5px; font-weight: 500; color: #7c8492; }
+.dt-syms button.on { background: var(--dt-bg); color: #fff; box-shadow: inset 0 2px 0 #f5c518; }
+.dt-chks { display: inline-flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+.dt-chks .dt-chk { margin-left: 0; }
+.dt-mktbtns { display: grid; grid-template-columns: 1fr auto 1fr; gap: 6px; align-items: center; padding: 6px 8px; background: var(--dt-panel); border-bottom: 1px solid var(--dt-line); }
+.dt-mktbtns button { min-height: 36px; border-radius: 3px; font-weight: 800; font-family: var(--font-sans); font-size: 13.5px; cursor: pointer; border: 1px solid transparent; }
+.dt-typeind { font-size: 11px; color: #ffe08a; font-family: var(--font-mono); text-align: center; white-space: nowrap; }
+.dt-acts { grid-template-columns: repeat(5, 1fr); }
+.dt-acts .dt-feed { background: #12324f; border-color: #2b6cb0; color: #bfdbfe; }
+.dt-acts .dt-feed.on { background: #1d4ed8; color: #fff; }
+.dt-live { color: #4ade80; }
+.dt-chip.park { background: repeating-linear-gradient(45deg, #4b5563, #4b5563 4px, #374151 4px, #374151 8px); border: 1px dashed #f5c518; }
+.dt-chip.ghost { background: transparent; border: 2px dashed #f5c518; color: #f5c518; cursor: default; }
+.dt-ladder tr.dropt td { box-shadow: inset 0 2px 0 #f5c518, inset 0 -2px 0 #f5c518; }
+.dt-ladder td.c-px { cursor: grab; }
+.dt-ladder td.c-bid, .dt-ladder td.c-ask { cursor: pointer; }
+.dt-cmp { width: 100%; min-width: 620px; border-collapse: collapse; font-size: 11.5px; font-family: var(--font-sans); }
+.dt-cmp th { background: #2a2e37; color: var(--dt-dim); text-align: left; padding: 5px 6px; }
+.dt-cmp td { padding: 5px 6px; border-bottom: 1px solid #2a2e37; vertical-align: top; color: var(--dt-text); line-height: 1.4; }
+.dt-cmp td:first-child { white-space: nowrap; }
+.dt-note a { color: #93c5fd; }
+.dt-hedge { margin-top: 8px; padding: 8px 10px; background: #13202e; border: 1px solid #2b4a6b; border-radius: 4px; }
+.dt-hedge b { color: #fff; }
+.dt-hedge .dt-kv td small { display: block; }
+.dt-orders tfoot td.dt-sum { padding: 7px 8px; background: #1c1f26; color: var(--dt-text); white-space: normal; font-family: var(--font-sans); font-size: 12px; line-height: 1.5; }
+.dt-orders td small { display: block; }
+@media (max-width: 768px) {
+  .dt-syms button { min-height: 42px; padding: 5px 12px; }
+  .dt-mktbtns { grid-template-columns: 1fr 1fr; }
+  .dt-mktbtns .dt-typeind { grid-column: 1 / -1; order: 3; }
+  .dt-mktbtns button { min-height: 48px; font-size: 15px; }
+  .dt-acts { grid-template-columns: repeat(3, 1fr); }
+  .dt-acts .dt-bmkt, .dt-acts .dt-smkt { grid-column: auto; }
+  .dt-chks { margin-left: 0; }
+}

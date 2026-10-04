@@ -548,6 +548,26 @@ window.VTKnowledge = {
         <li>Đã báo cáo sếp: hợp đồng, lệnh, diff khóa được, rủi ro còn lại.</li></ol>
         <p><b>Trên hệ thống:</b> Tổng quan (dòng vàng vị thế ròng) + Giao dịch (còn hở, lệnh chờ) + Trợ lý (cảnh báo FND, biến động).</p>` },
 
+    { id: 'cqg-vs-gia-lap', cat: 'cqg', title: 'CQG thật và Sàn giả lập: giống – khác – lên sàn thật cần chú ý', tags: 'cqg so sanh san gia lap domtrader hot fast click keo tha huy chuot phai phim tat parked day gtc account summary api fix',
+      sum: 'Sàn giả lập làm theo tài liệu DOMTrader của CQG: cùng thang giá, nút, phím, khay lệnh, tên trường tài khoản. Khác chủ yếu ở cách khớp lệnh, đăng nhập và giờ sàn.',
+      body: `<p><b>Giống CQG (tập quen tay được):</b></p><ul>
+        <li>Thang giá <b>Buy · Bid · Price · Ask · Sell</b>; nút <b>Buy MKT / Sell MKT</b> ở đầu DOM, Sell bên phải.</li>
+        <li><b>Fast-click</b>: bấm cột Buy/Bid để mua, Sell/Ask để bán – dưới giá là LMT, trên giá là STP. Kéo ô giá thả vào cột Buy/Sell. Giữ Ctrl đổi sang lệnh stop khác (giả lập: STL).</li>
+        <li>Sửa lệnh: <b>kéo lệnh sang giá mới</b>, hoặc chọn lệnh rồi ↑/↓ + Enter, gõ số lot + Enter. Hủy: <b>chuột phải</b>, nút hủy lệnh mua / bán / tất cả, kéo lệnh ra ngoài, hoặc Delete.</li>
+        <li>Phím mặc định: ← mua / → bán · Alt+←/→ tại best bid/offer · Shift+←/→ tại best offer/bid · Ctrl+←/→ tại giá khớp · Home/Esc về giữa · Ctrl+Shift+Alt+X/B/C/Q/V hủy hết / hủy mua / hủy bán / thanh lý / đảo vị thế.</li>
+        <li>Khay lệnh <b>Working, Filled, Cancelled, Exceptions, Parked, All</b>; thời hạn DAY/GTC; Account Summary: <b>Balance, P/L, OTE, NLV, Margin Value, Purchasing Power, Margin Excess</b>.</li></ul>
+        <p><b>Khác thực tế (phải nhớ):</b></p><table><tr><th>Điểm</th><th>CQG thật</th><th>Sàn giả lập</th></tr>
+        <tr><td>Khớp lệnh</td><td>LMT xếp hàng – chạm giá chưa chắc khớp; trượt giá thật</td><td>Chạm giá là khớp; trượt giá theo kịch bản</td></tr>
+        <tr><td>Fast-click</td><td>Broker (FCM) bật/tắt; có thể chưa bật</td><td>Bật/tắt được để tập cả hai cách</td></tr>
+        <tr><td>Phím</td><td>Có thể bị cấu hình khác: Setup → Trading Preferences → Keyboard Keys</td><td>Đúng bộ phím mặc định</td></tr>
+        <tr><td>Tiền & ký quỹ</td><td>Do thành viên MXV tính, đổi theo thời kỳ</td><td>Số mẫu – sửa trong ⚙️</td></tr>
+        <tr><td>Giờ sàn</td><td>London ≈ 15:00–23:30 giờ VN (mùa đông 16:00–00:30); ngoài giờ không khớp</td><td>Chạy mọi lúc; nút 📡 bám giá London thật (ngoài giờ giá đứng)</td></tr>
+        <tr><td>Loại lệnh</td><td>Thêm Trailing, Iceberg, DOM-Triggered, Bracket/OCO…</td><td>MKT, LMT, STP, STL</td></tr>
+        <tr><td>Mã hợp đồng</td><td>Theo cách hiển thị của thành viên</td><td>LRCF27 kèm mã ICE RMF27</td></tr></table>
+        <p><b>Trước khi đánh thật:</b> (1) đăng nhập tài khoản <b>demo</b> của thành viên MXV, kiểm tra Fast-click và phím; (2) bật xác nhận lệnh; (3) đặt thử 1 lot LMT xa giá rồi sửa – hủy; (4) đối chiếu mã hợp đồng, số lot, Margin Excess; (5) lệnh thật đầu tiên có người thứ hai đứng xem; (6) sau mỗi lệnh ghi lại trên hệ thống (lệnh chờ → ✔ Khớp).</p>
+        <p><b>Học API sau này:</b> CQG có WebAPI và FIX API (giá real-time, đặt lệnh, Execution Report với trạng thái New, Partially filled, Filled, Canceled, Rejected…). Cần broker cấp quyền + tài khoản demo API; khóa API chỉ để trên máy chủ, không đưa lên giao diện hay GitHub. Lộ trình: kết nối <b>chỉ đọc</b> giá & trạng thái lệnh trước, đặt lệnh qua API sau cùng.</p>
+        <p>Trên hệ thống: thẻ 🎮 Sàn giả lập → 🎓 Hướng dẫn từng bước, bảng 📋 So sánh với CQG thật, 11 bài tập tình huống, tab Trades thắng/thua.</p>` },
+
     // ===================== HƯỚNG DẪN SỬ DỤNG =====================
     { id: 'dung-tren-dien-thoai', cat: 'huongdan', title: 'Dùng hệ thống trên điện thoại', tags: 'dien thoai mobile man hinh chinh nut bam quay lai doc tai lieu co chu iphone android',
       sum: 'Mở bằng link cố định, đặt biểu tượng ra màn hình chính, chuyển thẻ ở thanh dưới, nút Quay lại đóng cửa sổ, chỉnh cỡ chữ khi đọc.',
