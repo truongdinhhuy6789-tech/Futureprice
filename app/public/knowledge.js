@@ -568,6 +568,24 @@ window.VTKnowledge = {
         <p><b>Học API sau này:</b> CQG có WebAPI và FIX API (giá real-time, đặt lệnh, Execution Report với trạng thái New, Partially filled, Filled, Canceled, Rejected…). Cần broker cấp quyền + tài khoản demo API; khóa API chỉ để trên máy chủ, không đưa lên giao diện hay GitHub. Lộ trình: kết nối <b>chỉ đọc</b> giá & trạng thái lệnh trước, đặt lệnh qua API sau cùng.</p>
         <p>Trên hệ thống: thẻ 🎮 Sàn giả lập → 🎓 Hướng dẫn từng bước, bảng 📋 So sánh với CQG thật, 11 bài tập tình huống, tab Trades thắng/thua.</p>` },
 
+    { id: 'doc-bieu-do-ohlc', cat: 'cqg', title: 'Đọc biểu đồ thanh OHLC (như trên CQG)', tags: 'bieu do thanh ohlc bar chart nen candle cqg mo cua dong cua cao thap xanh do xam khung 1h 5m doc bieu do',
+      sum: 'Mỗi thanh là một khung thời gian: đỉnh = cao nhất, đáy = thấp nhất, gạch trái = mở cửa, gạch phải = đóng cửa; xanh tăng, đỏ giảm, xám đứng giá.',
+      body: `<table><tr><th>Phần của thanh</th><th>Ý nghĩa</th></tr>
+        <tr><td>Đỉnh thanh</td><td>Giá <b>cao nhất</b> trong khung (High)</td></tr>
+        <tr><td>Đáy thanh</td><td>Giá <b>thấp nhất</b> trong khung (Low)</td></tr>
+        <tr><td>Gạch ngang bên <b>trái</b></td><td>Giá <b>mở cửa</b> – giá khớp đầu tiên của khung (Open)</td></tr>
+        <tr><td>Gạch ngang bên <b>phải</b></td><td>Giá <b>đóng cửa</b> – giá khớp cuối cùng của khung (Close)</td></tr>
+        <tr><td>Màu xanh / đỏ / xám</td><td>Đóng cao hơn mở (tăng) / thấp hơn mở (giảm) / bằng mở</td></tr>
+        <tr><td>Đường đứt nét ngang</td><td>Giá hiện tại (giá khớp gần nhất)</td></tr>
+        <tr><td>Nhãn "2-0:00", "12:00"</td><td>Ngày 2 lúc 0:00, rồi 12:00 cùng ngày – CQG ghi "ngày-giờ" ở chỗ sang ngày mới</td></tr></table>
+        <ul><li><b>Khung thời gian</b>: 5m, 15m, 1H, 4H, 1D = mỗi thanh gom 5 phút, 15 phút, 1 giờ… Ảnh CQG thường dùng 1H để xem 1–3 ngày.</li>
+        <li><b>Thanh dài</b> = trong khung giá chạy mạnh; <b>đóng gần đỉnh</b> = bên mua thắng cuối khung; <b>đóng gần đáy</b> = bên bán thắng.</li>
+        <li><b>Chuỗi thanh xanh, đỉnh sau cao hơn đỉnh trước</b> = xu hướng tăng; ngược lại là giảm. Thanh xám nhỏ = giằng co.</li>
+        <li>Đọc kèm <b>khối lượng</b> (cột dưới): giá tăng + khối lượng lớn đáng tin hơn giá tăng khi ít người giao dịch.</li>
+        <li><b>Nến</b> (candle) là cùng dữ liệu, chỉ khác cách vẽ: thân nến = khoảng từ mở tới đóng.</li></ul>
+        <p><b>Với phòng hộ:</b> biểu đồ giúp chọn mức giá đặt LMT (vd mua phòng hộ gần đáy các thanh gần đây), không dùng để đoán hướng mà bỏ phòng hộ.</p>
+        <p><b>Trên hệ thống:</b> thẻ 🌐 Bảng giá → 📈 Biểu đồ thanh (giá London/New York thật, máy chủ ghi từng 5 phút từ 04/10/2026 nên dày dần theo phiên); thẻ 🎮 Sàn giả lập → biểu đồ có dấu ▲ mua / ▼ bán của mình.</p>` },
+
     // ===================== HƯỚNG DẪN SỬ DỤNG =====================
     { id: 'dung-tren-dien-thoai', cat: 'huongdan', title: 'Dùng hệ thống trên điện thoại', tags: 'dien thoai mobile man hinh chinh nut bam quay lai doc tai lieu co chu iphone android',
       sum: 'Mở bằng link cố định, đặt biểu tượng ra màn hình chính, chuyển thẻ ở thanh dưới, nút Quay lại đóng cửa sổ, chỉnh cỡ chữ khi đọc.',

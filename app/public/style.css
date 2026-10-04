@@ -1929,3 +1929,28 @@ details.dt-card[open] summary { margin-bottom: 8px; }
   .dt-acts .dt-bmkt, .dt-acts .dt-smkt { grid-column: auto; }
   .dt-chks { margin-left: 0; }
 }
+
+/* ===================== BIỂU ĐỒ THANH OHLC KIỂU CQG ===================== */
+.oh { background: #000; border: 1px solid #2a2a2a; border-radius: 6px; overflow: hidden; color: #d4d4d4; }
+.oh-bar { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 5px 6px; background: #141414; border-bottom: 1px solid #2a2a2a; flex-wrap: wrap; }
+.oh-tfs, .oh-tools { display: flex; gap: 3px; flex-wrap: wrap; }
+.oh-bar button { min-width: 34px; min-height: 30px; padding: 2px 8px; background: #1f1f1f; color: #bdbdbd; border: 1px solid #333; border-radius: 3px; font-family: var(--font-mono); font-size: 12px; font-weight: 700; cursor: pointer; }
+.oh-bar button.on { background: #f5c518; color: #111; border-color: #f5c518; }
+.oh-info { min-height: 22px; padding: 3px 8px; font-family: var(--font-mono); font-size: 11.5px; color: #a3a3a3; background: #0a0a0a; border-bottom: 1px solid #1f1f1f; }
+.oh-info b { color: #e5e5e5; font-weight: 600; } .oh-info .up { color: #1ed37f; } .oh-info .dn { color: #e5484d; } .oh-note { color: #fcd34d; font-family: var(--font-sans); }
+.oh-wrap { position: relative; }
+.oh-cv { display: block; width: 100%; touch-action: pan-y; cursor: crosshair; }
+.oh-empty { position: absolute; inset: 0; display: grid; place-items: center; padding: 20px; text-align: center; color: #fcd34d; font-size: 13px; font-family: var(--font-sans); }
+.oh-empty[hidden] { display: none; }
+.oh-tbl { padding: 6px 8px; background: #0a0a0a; border-top: 1px solid #1f1f1f; font-size: 12px; }
+.oh-tbl summary { cursor: pointer; color: #9ca3af; }
+.oh-tbl table { margin-top: 6px; }
+.board-chart { margin-bottom: 18px; }
+.oh-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+.oh-head select { width: auto; min-width: 220px; }
+.dt-chartcard { padding: 8px; }
+.dt-chartcard h4 { padding: 2px 4px; }
+@media (max-width: 768px) {
+  .oh-bar button { min-width: 40px; min-height: 40px; font-size: 13px; }
+  .oh-head select { min-width: 0; width: 100%; }
+}

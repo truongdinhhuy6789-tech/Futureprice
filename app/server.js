@@ -86,7 +86,7 @@ async function fetchQuotes() {
     const data = await res.json();
     const sig = JSON.stringify([data.coffee_liffe, data.coffee_ice, data.updated]);
     market.quotes = data; market.ok = true; market.error = null; market.fetchedAt = new Date().toISOString();
-    if (sig !== lastSignature) { lastSignature = sig; market.changedAt = market.fetchedAt; broadcast('quotes', snapshot()); recordHistory(data); }
+    if (sig !== lastSignature) { lastSignature = sig; market.changedAt = market.fetchedAt; broadcast('quotes', snapshot()); recordHistory(data); recordBars(data); }
     else broadcast('heartbeat', { ok: true, fetchedAt: market.fetchedAt, changedAt: market.changedAt });
     telegramBot.checkPriceAlerts(data, loadHistory()).catch(() => {});
   } catch (err) {
@@ -130,6 +130,37 @@ function recordHistory(data) {
     fs.renameSync(HISTORY_FILE + '.tmp', HISTORY_FILE);
   } catch (e) { console.error('[Lịch sử giá] Lỗi ghi:', e.message); }
 }
+
+// ---------- Thanh giá 5 phút (OHLC) dựng từ giá khớp lấy về – để vẽ biểu đồ thanh như CQG ----------
+// Mỗi thanh: [giờ bắt đầu (giây), mở, cao, thấp, đóng, khối lượng]. Lấy giá 5 giây/lần khi có người xem, 60 giây/lần khi không
+// → đỉnh/đáy rất ngắn giữa hai lần lấy có thể bị thiếu. Biểu đồ gộp lên 15 phút / 1 giờ / 4 giờ / 1 ngày ở trình duyệt.
+const BARS_FILE = path.join(DATA_DIR, 'intraday_bars.json');
+const BAR_SEC = 300, BARS_KEEP_SEC = 21 * 86400;
+let bars = (() => { try { return JSON.parse(fs.readFileSync(BARS_FILE, 'utf8')) || {}; } catch (e) { return {}; } })();
+const barSeen = {}; let barsDirty = false;
+function recordBars(data) {
+  [data.coffee_liffe, data.coffee_ice].forEach(rows => (rows || []).forEach(q => {
+    const name = q && q.Name, t = engine.num(q && q.Time), p = engine.num(q && q.Last), vol = engine.num(q && q.Volume);
+    if (!name || !t || !(p > 0)) return;
+    const seen = barSeen[name];
+    if (seen && seen.t === t && seen.vol === vol) return;                 // chưa có lần khớp mới
+    const arr = bars[name] || (bars[name] = []);
+    const bt = Math.floor(t / BAR_SEC) * BAR_SEC; let b = arr[arr.length - 1];
+    if (b && bt < b[0]) return;                                           // dữ liệu cũ hơn thanh cuối
+    const dv = seen ? (vol >= seen.vol ? vol - seen.vol : vol) : 0;       // khối lượng cộng dồn trong ngày → phần tăng thêm
+    if (!b || b[0] !== bt) { b = [bt, p, p, p, p, 0]; arr.push(b); }
+    b[2] = Math.max(b[2], p); b[3] = Math.min(b[3], p); b[4] = p; b[5] += dv;
+    barSeen[name] = { t, vol }; barsDirty = true;
+  }));
+}
+function saveBars() {
+  if (!barsDirty) return; barsDirty = false;
+  const cut = Date.now() / 1000 - BARS_KEEP_SEC;
+  Object.keys(bars).forEach(k => { bars[k] = bars[k].filter(b => b[0] >= cut); if (!bars[k].length) delete bars[k]; });
+  try { fs.writeFileSync(BARS_FILE + '.tmp', JSON.stringify(bars)); fs.renameSync(BARS_FILE + '.tmp', BARS_FILE); } catch (e) { console.error('[Thanh giá] Lỗi ghi:', e.message); }
+}
+setInterval(saveBars, 60000);
+process.on('SIGINT', () => { saveBars(); process.exit(0); });
 
 // ---------- Tỷ giá Vietcombank (API công khai) ----------
 async function fetchFx() {
@@ -299,6 +330,11 @@ const server = http.createServer(async (req, res) => {
     }
     if (pathname === '/api/load-matrix') return sendJson(res, 200, loadPositions());
     if (pathname === '/api/history') return sendJson(res, 200, loadHistory());
+    if (pathname === '/api/bars') {
+      const sym = String(new URL(req.url, 'http://localhost').searchParams.get('sym') || '').toUpperCase();
+      if (sym) return sendJson(res, 200, { sym, bar: BAR_SEC, bars: bars[sym] || [] });
+      return sendJson(res, 200, { bar: BAR_SEC, symbols: Object.fromEntries(Object.entries(bars).map(([k, v]) => [k, v.length])) });
+    }
     if (pathname === '/api/fx') return sendJson(res, 200, market.fx || {});
     if (pathname === '/api/save-matrix' && req.method === 'POST') {
       const saved = savePositions(await readBody(req));

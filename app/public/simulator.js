@@ -71,8 +71,24 @@
     if (!s.mk[sym]) {
       const q = liveRows().find(x => x.Name === sym); const last = Math.round(Number(q && q.Last) || 3450);
       s.mk[sym] = { last, bid: last, ask: last + 1, high: Math.round(Number(q && q.High) || last), low: Math.round(Number(q && q.Low) || last), open: Math.round(Number(q && q.Open) || last), tv: 0, vap: {}, hist: [last] };
+      seedBars(s.mk[sym]);
     }
     return s.mk[sym];
+  }
+  // Thanh 1 phút mô phỏng: mỗi nhịp giá = 1 phút "giờ giả lập"; dựng sẵn 6 giờ lịch sử để biểu đồ không trống
+  function seedBars(m) {
+    const now = Math.floor(Date.now() / 60000) * 60; m.t = now; let p = m.last; const out = [];
+    for (let i = 1; i <= 360; i++) {
+      const c2 = p, o2 = c2 + (Math.random() < 0.5 ? -1 : 1) * rnd(0, 3); const h = Math.max(o2, c2) + rnd(0, 2), l = Math.min(o2, c2) - rnd(0, 2);
+      out.push([now - i * 60, o2, h, l, c2, rnd(3, 25)]); p = o2;
+    }
+    m.bars = out.reverse();
+  }
+  function barTick(m, v) {
+    if (!m.bars) seedBars(m);
+    m.t = (m.t || Math.floor(Date.now() / 60000) * 60) + 60; const prev = m.bars[m.bars.length - 1]; const o2 = prev ? prev[4] : m.last;
+    m.bars.push([m.t, o2, Math.max(o2, m.last) + (Math.random() < 0.3 ? rnd(0, 2) : 0), Math.min(o2, m.last) - (Math.random() < 0.3 ? rnd(0, 2) : 0), m.last, v || 0]);
+    if (m.bars.length > 1500) m.bars.splice(0, m.bars.length - 1500);
   }
   function resync(sym) { const q = liveRows().find(x => x.Name === sym); if (!q) return false; delete s.mk[sym]; mkt(sym); view.center = null; return true; }
   // Độ sâu sổ lệnh: số lot chờ ở từng mức giá; thị trường có xu hướng thì phía thuận chiều dày hơn
@@ -92,7 +108,7 @@
       m.last = Math.max(500, m.last + d); m.bid = m.last; m.ask = m.last + 1;
       m.high = Math.max(m.high, m.last); m.low = Math.min(m.low, m.last);
       const v = rnd(1, s.scenario === 'fast' ? 40 : 12); m.vap[m.last] = (m.vap[m.last] || 0) + v; m.tv += v;
-      m.hist = (m.hist || []).concat(m.last).slice(-30);
+      m.hist = (m.hist || []).concat(m.last).slice(-30); barTick(m, v);
     });
     s.orders.forEach(tryFill);
     if (ticks % 4 === 0) save();
@@ -200,7 +216,7 @@
     if (s.scenario === 'fast' && !lim) p += (o.side === 'BUY' ? 1 : -1) * rnd(1, 4); // trượt giá
     const left = o.qty - o.filled; const q = s.scenario === 'partial' && left > 1 ? Math.ceil(left / 2) : left;
     o.avg = (o.avg * o.filled + p * q) / (o.filled + q); o.filled += q; o.lastFill = clock();
-    s.fills.push({ id: 'F' + String(s.fseq++).padStart(5, '0'), oid: o.id, at: clock(), date: today(), sym: o.sym, side: o.side, qty: q, px: p });
+    s.fills.push({ id: 'F' + String(s.fseq++).padStart(5, '0'), oid: o.id, at: clock(), date: today(), sym: o.sym, side: o.side, qty: q, px: p, t: s.feed === 'live' ? Math.floor(Date.now() / 1000) : (m.t || Math.floor(Date.now() / 1000)) });
     m.vap[p] = (m.vap[p] || 0) + q; m.tv += q;
     o.status = o.filled >= o.qty ? 'FILLED' : 'PARTIAL';
     log(o.status === 'FILLED' ? `${o.id} FILLED ${o.qty} ${mxv(o.sym)} ${o.side} giá khớp TB ${px(o.avg)}${!lim && s.scenario === 'fast' ? ' (có trượt giá)' : ''}.`
@@ -427,6 +443,8 @@
           <div class="dt-confirm" id="dtConfirm" hidden></div>
         </section>
         <aside class="dt-side">
+          <div class="dt-card dt-chartcard"><h4>📈 Biểu đồ <span id="dtChartSym"></span> <small id="dtChartSrc"></small></h4><div id="dtChart"></div>
+            <p class="dt-note">▲ điểm bạn MUA khớp · ▼ điểm BÁN khớp. Thanh xanh tăng, đỏ giảm, xám đứng giá; gạch trái = mở cửa, gạch phải = đóng cửa.</p></div>
           <div class="dt-card" id="dtAcct"></div>
           <div class="dt-card" id="dtCoach"></div>
           <div class="dt-card"><h4>Order Ticket <small>phiếu lệnh</small></h4>
@@ -474,6 +492,24 @@
       <details class="dt-log" open><summary>Nhật ký & giải thích trạng thái</summary><div id="dtLog"></div></details>
     </div>`;
     built = true; bind();
+    if (window.VTOhlc) chart = window.VTOhlc.mount($('dtChart'), { tf: 300, tfs: [[60, '1m'], [300, '5m'], [900, '15m'], [3600, '1H'], [14400, '4H']], height: 280, title: 'sàn giả lập' });
+  }
+  // Biểu đồ: mô phỏng → thanh 1 phút giả lập; 📡 giá thật → thanh 5 phút máy chủ ghi từ giá London
+  let chart = null, liveBars = { sym: '', at: 0, bars: [] };
+  function chartPaint() {
+    if (!chart) return; const m = mkt(s.sym); if (!m.bars) seedBars(m); const mk = s.fills.filter(f => f.sym === s.sym && f.t).map(f => ({ t: f.t, side: f.side, px: f.px }));
+    $('dtChartSym').textContent = mxv(s.sym);
+    if (s.feed === 'live') {
+      $('dtChartSrc').textContent = '· giá London thật (thanh máy chủ ghi 5 phút/lần)';
+      if (liveBars.sym !== s.sym || Date.now() - liveBars.at > 15000) {
+        liveBars.at = Date.now(); const sym = s.sym;
+        fetch('/api/bars?sym=' + encodeURIComponent(sym), { cache: 'no-store' }).then(r => r.json()).then(d => { liveBars = { sym, at: Date.now(), bars: d.bars || [] }; chartPaint(); }).catch(() => {});
+      }
+      const bars = liveBars.sym === s.sym ? liveBars.bars : [];
+      return chart.setData(bars, 300, bars.length < 10 ? 'Máy chủ mới bắt đầu ghi thanh giá London – biểu đồ dày dần theo từng phiên (≈ 15:00–23:30 giờ VN).' : '', mk);
+    }
+    $('dtChartSrc').textContent = '· giá mô phỏng (mỗi nhịp = 1 phút giả lập)';
+    chart.setData(m.bars || [], 60, '', mk);
   }
   function rowsHtml() {
     const m = mkt(s.sym); const N = phone() ? 9 : 12; if (view.center === null) view.center = m.last;
@@ -531,6 +567,7 @@
     $('dtPos').innerHTML = `<span>Working <b>${working().length}</b></span><span>Pos <b class="${g.pos > 0 ? 'b' : g.pos < 0 ? 's' : ''}">${sg(g.pos, String)}</b></span><span>Avg <b>${g.pos ? px(Math.round(g.avg * 10) / 10) : '—'}</b></span>`
       + `<span>OTE <b class="${ote > 0 ? 'b' : ote < 0 ? 's' : ''}">${sg(ote, px)} USD</b></span>`;
     $('dtRows').innerHTML = rowsHtml();
+    chartPaint();
     const selO = s.orders.find(o => o.id === view.selOrder);
     $('dtMode').innerHTML = selO ? `Đang chọn lệnh <b>#${selO.num}</b> ${selO.side} ${selO.qty - selO.filled} ${selO.type} ${desc(selO)} – <kbd>↑</kbd><kbd>↓</kbd> dời giá, số + <kbd>Enter</kbd> đổi lot, <kbd>Delete</kbd> hủy, <kbd>Esc</kbd> bỏ chọn${view.mod ? ` · sửa chờ gửi: ${view.mod.qty} lot @${px(view.mod.px)} (<kbd>Enter</kbd>)` : ''}`
       : view.mode === 'browse' && view.sel !== null ? `Chế độ <b>Price-browse</b> @ ${px(view.sel)} – <kbd>←</kbd> MUA / <kbd>→</kbd> BÁN tại giá này · <kbd>Esc</kbd> về Market`
