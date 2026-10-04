@@ -598,6 +598,20 @@ window.VTKnowledge = {
         <li><b>Gửi và theo dõi:</b> trạng thái <b>Working</b> nghĩa là chưa khớp; <b>Filled</b> mới là đã khớp. Partial Fill phải ghi đúng số lot đã khớp. Rejected cần đọc lý do, không bấm gửi liên tục.</li>
         <li><b>Ghi vào Futureprice:</b> Giao dịch → Hàng ảo → Lệnh sàn mới; chọn <b>MUA, 4 lot, RMF27</b>, nhập ngày/giá khớp và liên kết hợp đồng bán. Chỉ chọn “Đã khớp” khi CQG báo Filled.</li>
         <li><b>Đóng bảo hiểm:</b> khi đã mua hàng thật/chốt xong rủi ro, thực hiện lệnh đối ứng theo phê duyệt; đối chiếu CQG, Futureprice và xác nhận môi giới cuối ngày.</li></ol>
+        <h3>Tự đặt CQG hay nhờ broker?</h3>
+        <table><tr><th>Tình huống</th><th>Cách làm phù hợp</th><th>Lý do</th></tr>
+        <tr><td>Lệnh phòng hộ thông thường; đúng mã, đúng kỳ; tài khoản đủ tiền; người đặt đã được phân quyền</td><td><b>Tự đặt trên CQG</b></td><td>Nhanh, chủ động giá Limit và theo dõi Working/Filled trực tiếp.</td></tr>
+        <tr><td>Lần đầu giao dịch thật hoặc chưa chắc chiều MUA/BÁN, mã kỳ, loại lệnh</td><td><b>Gọi broker trước khi gửi</b></td><td>Nhờ đọc lại phiếu lệnh; không dùng lệnh thật để học.</td></tr>
+        <tr><td>Không đăng nhập được, CQG mất kết nối, treo màn hình, lệnh Rejected hoặc trạng thái không rõ</td><td><b>Gọi broker ngay</b></td><td>Không gửi lặp vì có thể tạo lệnh trùng; broker kiểm tra trạng thái tại hệ thống thành viên.</td></tr>
+        <tr><td>Lệnh lớn, thị trường biến động mạnh, thanh khoản mỏng hoặc cần khớp nhiều phần</td><td><b>Broker hỗ trợ chiến thuật</b></td><td>Thống nhất cách chia lệnh, giới hạn trượt giá và thứ tự thực hiện trước khi vào lệnh.</td></tr>
+        <tr><td>Sát FND/đáo hạn, cần đảo kỳ, spread, EFP hoặc xử lý giao nhận</td><td><b>Bắt buộc phối hợp broker/người quản trị rủi ro</b></td><td>Nghiệp vụ phức tạp, có rủi ro sai kỳ và phát sinh nghĩa vụ giao nhận vật chất.</td></tr>
+        <tr><td>Thiếu ký quỹ, margin call, số dư Available bất thường</td><td><b>Không tự gửi thêm; gọi broker và kế toán</b></td><td>Xác minh tiền, hạn nộp và phương án giảm vị thế trước khi hành động.</td></tr></table>
+        <h3>Quy tắc “hai người kiểm tra” trước lệnh thật</h3>
+        <p>Người nhập đọc thành tiếng: <b>tài khoản → MUA → LRCF27/RMF27 → 4 lot → LIMIT → 3.450</b>. Người duyệt đối chiếu hợp đồng bán 38,4 tấn và trả lời “đúng” trước khi bấm Send. Sau khi gửi, chụp/xuất xác nhận và đọc lại <b>Order ID, Filled quantity, Average price</b>.</p>
+        <h3>Khi gọi broker phải nói gì?</h3>
+        <p>Mẫu ngắn: “Tài khoản … cần <b>MUA 4 lot Robusta LRCF27</b> để phòng hộ hợp đồng bán 38,4 tấn; lệnh <b>Limit 3.450</b>; hiệu lực trong ngày. Nhờ anh/chị đọc lại toàn bộ lệnh và chỉ thực hiện sau khi tôi xác nhận.” Broker phải đọc lại tài khoản, chiều, mã, số lot, loại lệnh, giá và hiệu lực. Không nhắn mỗi câu “mua giúp 4 lot”.</p>
+        <h3>Nếu thao tác sai hoặc nghi lệnh trùng</h3>
+        <ol><li>Dừng bấm, không gửi thêm và không tự đặt lệnh ngược để “sửa”.</li><li>Mở Orders/Working Orders kiểm tra Order ID và trạng thái.</li><li>Gọi broker, báo giờ gửi – mã – chiều – số lot – giá; yêu cầu xác nhận lệnh nào đang Working/Filled.</li><li>Chỉ Cancel/Replace hoặc đặt lệnh đối ứng sau khi người có thẩm quyền duyệt.</li><li>Ghi đúng kết quả cuối cùng vào Futureprice và lập ghi chú sự cố.</li></ol>
         <p><b>Nguyên tắc:</b> hệ thống chỉ tính và hướng dẫn; người có thẩm quyền mới được gửi lệnh thật. Thực hành trên tài khoản demo trước, không dùng phím nhanh khi chưa quen.</p>` },
     { id: 'barchart-volume-oi', cat: 'cqg', title: 'Đọc Barchart: giá, Volume và Open Interest', tags: 'barchart volume open interest oi hd mo gia tin hieu dong tien',
       sum: 'Volume là giao dịch trong phiên; Open Interest là số hợp đồng còn mở. Kết hợp hai số để mô tả dòng tiền, không dùng riêng lẻ để ra lệnh.',
