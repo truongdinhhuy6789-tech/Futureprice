@@ -25,7 +25,7 @@
       ? `<div class="cm-launch"><div class="dt-banner"><span><b>SIMULATION</b> · Sàn giả lập giao diện app CQG (điện thoại) – không kết nối CQG/MXV, không có tiền thật.</span></div>
           <button type="button" class="cm-open" data-m="open">📱 Mở sàn giả lập (giao diện CQG Mobile)</button>
           <button type="button" class="cm-alt" data-act="layout-d">🖥 Dùng giao diện DOMTrader (máy tính)</button></div><div class="cm-overlay" id="cmOverlay" hidden></div>`
-      : `<div class="cm-desk"><div class="dt-banner"><span><b>SIMULATION</b> · Xem thử giao diện app CQG trên điện thoại (khung 390px). Trên điện thoại thật sẽ hiện toàn màn hình.</span><span class="dt-bnbtns"><button type="button" class="dt-layoutbtn" data-act="layout-d">🖥 Về giao diện DOMTrader</button></span></div><div class="cm-phone" id="cmOverlay"></div></div>`;
+      : `<div class="cm-desk"><div class="dt-banner"><span><b>SIMULATION</b> · Xem thử giao diện app CQG trên điện thoại (khung 390px). Trên điện thoại thật sẽ hiện toàn màn hình.</span><span class="dt-bnbtns"><button type="button" class="dt-layoutbtn" data-act="layout-c">🖥 Về giao diện CQG Desktop</button><button type="button" class="dt-layoutbtn" data-act="layout-d">🎓 DOMTrader</button></span></div><div class="cm-phone" id="cmOverlay"></div></div>`;
     const box = $('cmOverlay');
     box.innerHTML = `<div class="cm" id="cmApp">
       <div class="cm-simtag">SIMULATION · giả lập</div>
@@ -206,7 +206,7 @@
         <div class="cm-row"><button type="button" data-act="run">${api.timerOn() ? '⏸ Dừng giá' : '▶ Cho giá chạy'}</button><button type="button" data-act="feed">${s.feed === 'live' ? '🎲 Về giá mô phỏng' : '📡 Giá London thật'}</button></div>
         <div class="cm-row"><button type="button" data-act="eod">⏭ Hết phiên</button><button type="button" data-m="confirm">${s.confirm ? '☑' : '☐'} Xác nhận lệnh</button><button type="button" data-m="park">${s.park ? '☑' : '☐'} Park</button></div>
         <label class="cm-lb">Kịch bản thị trường<select data-m="scn" class="cm-sel">${Object.entries(api.SCENARIOS).map(([k, l]) => `<option value="${k}"${k === s.scenario ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
-        <div class="cm-row"><button type="button" data-m="guide">❓ Giải thích các thanh</button><button type="button" data-act="layout-d">🖥 Giao diện DOMTrader</button></div>
+        <div class="cm-row"><button type="button" data-m="guide">❓ Giải thích các thanh</button><button type="button" data-act="layout-c">🖥 CQG Desktop</button><button type="button" data-act="layout-d">🎓 DOMTrader</button></div>
         ${full() ? '<div class="cm-row"><button type="button" class="dn" data-m="exit">✕ Thoát về hệ thống</button></div>' : ''}</div>`; }
     else if (mv.sheet === 'guide') h = `<div class="cm-sh"><h4>❓ Các thanh chức năng</h4><ul class="cm-guide">
         <li><b>‹ / ▦</b> danh sách mã · chạm tên mã mờ hai bên (hoặc vuốt ngang đầu màn hình) để đổi kỳ hạn.</li>
@@ -302,5 +302,5 @@
       if (j >= 0 && j < syms.length) { api.s.sym = syms[j]; api.view.center = null; mv.hotC = true; mv.tkt.px = null; api.save(); paint(); }
     }, { passive: true });
   }
-  window.VTSimM = { paint, open };
+  window.VTSimM = { paint, open, ISIN };
 })();

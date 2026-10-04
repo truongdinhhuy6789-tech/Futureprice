@@ -300,7 +300,7 @@
 
   // ---------- Bài tập tình huống ----------
   function startLesson(id) {
-    const L = LESSONS[id]; const keep = { confirm: s.confirm, fast: s.fast, speed: s.speed, imUsd: s.imUsd, mmUsd: s.mmUsd, fee: s.fee, fx: s.fx, qty: s.qty, dur: s.dur, layout: s.layout, cm: s.cm };
+    const L = LESSONS[id]; const keep = { confirm: s.confirm, fast: s.fast, speed: s.speed, imUsd: s.imUsd, mmUsd: s.mmUsd, fee: s.fee, fx: s.fx, qty: s.qty, dur: s.dur, layout: s.layout, cm: s.cm, cd: s.cd, calc: s.calc };
     setRun(false);
     s = { ...fresh(), ...keep, mk: s.mk, lesson: id || '' }; view.selOrder = ''; view.mod = null; view.pending = null; view.center = null; view.sel = null; view.mode = 'market';
     if (L) {
@@ -437,7 +437,7 @@
   function build() {
     const root = $('simulatorRoot'); if (!root) return;
     root.innerHTML = `<div class="dt">
-      <div class="dt-banner"><span><b>SIMULATION</b> · Sàn giả lập kiểu CQG DOMTrader để đào tạo – không kết nối CQG/MXV, không gửi lệnh thật, không có tiền thật.</span><span class="dt-bnbtns"><button type="button" class="dt-tourbtn" data-tour="start">🎓 Hướng dẫn từng bước</button><button type="button" class="dt-layoutbtn" data-act="layout-m">📱 Giao diện CQG Mobile</button></span></div>
+      <div class="dt-banner"><span><b>SIMULATION</b> · Sàn giả lập kiểu CQG DOMTrader để đào tạo – không kết nối CQG/MXV, không gửi lệnh thật, không có tiền thật.</span><span class="dt-bnbtns"><button type="button" class="dt-tourbtn" data-tour="start">🎓 Hướng dẫn từng bước</button><button type="button" class="dt-layoutbtn" data-act="layout-c">🖥 Giao diện CQG Desktop</button><button type="button" class="dt-layoutbtn" data-act="layout-m">📱 Giao diện CQG Mobile</button></span></div>
       <div class="dt-grid">
         <section class="dt-win">
           <div class="dt-syms" id="dtSyms" role="tablist" aria-label="Mã hợp đồng"></div>
@@ -542,8 +542,8 @@
     $('dtChartSrc').textContent = '· giá mô phỏng (mỗi nhịp = 1 phút giả lập)';
     chart.setData(simBars(m), 60, '', mk);
   }
-  function rowsHtml() {
-    const m = mkt(s.sym); const N = phone() ? 9 : 12; if (view.center === null) view.center = m.last;
+  function rowsHtml(n) {
+    const m = mkt(s.sym); const N = n || (phone() ? 9 : 12); if (view.center === null) view.center = m.last;
     const c = view.center; const avg = ((book()[s.sym] || {}).avg) || 0; const work = working().concat(s.orders.filter(o => o.sym === s.sym && o.status === 'PARKED'));
     let maxV = 1; for (let p = c - N; p <= c + N; p++) maxV = Math.max(maxV, m.vap[p] || 0);
     const lvl = o => (o.type === 'STL' ? o.stop : o.px);
@@ -584,10 +584,12 @@
       + `<td>${o.status === 'PARKED' ? `<button type="button" data-actv="${o.id}">Activate</button>` : ''}${['WORKING', 'PARTIAL', 'PARKED'].includes(o.status) && o.type !== 'MKT' ? `<button type="button" data-mod="${o.id}">Modify</button>` : ''}${['WORKING', 'PARTIAL', 'PARKED'].includes(o.status) ? `<button type="button" data-cxl="${o.id}">Cancel</button>` : ''}</td></tr>`).join('');
     return `<thead><tr><th>Status</th><th>Account</th><th>B/S</th><th>Size</th><th>Symbol</th><th>Type/Dur</th><th>Price</th><th>Filled</th><th>Avg Fill Price</th><th>Place Time</th><th>Order #</th><th></th></tr></thead><tbody>${body || `<tr><td colspan="12" class="dt-empty">Không có lệnh ở mục này.</td></tr>`}</tbody>`;
   }
-  const mobileLayout = () => (s.layout ? s.layout === 'mobile' : phone());
+  const layoutNow = () => s.layout || (phone() ? 'mobile' : 'cqgd');   // 'mobile' CQG Mobile · 'cqgd' CQG Desktop · 'desktop' DOMTrader có hướng dẫn
+  const mobileLayout = () => layoutNow() === 'mobile';
   function paint() {
     const root = $('simulatorRoot'); if (!root) return;
     if (mobileLayout() && window.VTSimM) { built = false; bindRoot(); return window.VTSimM.paint(); }
+    if (layoutNow() === 'cqgd' && window.VTSimD) { built = false; bindRoot(); return window.VTSimD.paint(); }
     if (!built || !root.querySelector('.dt')) build();
     const m = mkt(s.sym); const a = account(); const g = a.b[s.sym] || { pos: 0, avg: 0 }; const ote = g.pos ? (m.last - g.avg) * LOT_T * g.pos : 0;
     $('dtSyms').innerHTML = symbols().map(x => `<button type="button" role="tab" data-sym="${x}" class="${x === s.sym ? 'on' : ''}">${mxv(x)}<small>${x}</small></button>`).join('');
@@ -704,12 +706,13 @@
         case 'feed': return setFeed(s.feed === 'live' ? 'sim' : 'live');
         case 'layout-m': return setLayout('mobile');
         case 'layout-d': return setLayout('desktop');
+        case 'layout-c': return setLayout('cqgd');
         case 'ok': { const o = view.pending; view.pending = null; if (o) send(o); return; }
         case 'no': view.pending = null; log('Đã bỏ lệnh ở bước xác nhận – chưa gửi gì lên sàn.'); return paint();
         case 'ticket': { const side = $('tkSide').value, type = $('tkType').value, p = Number($('tkPx').value) || m.last; view.tkTouched = false; return newOrder(side, type, p); }
         case 'dep': s.cash += 300000000; log('Đã nạp 300 triệu (giả lập). Thực tế: chuyển vào đúng tài khoản ngân hàng của thành viên MXV, chờ tiền hiện trong Margin Excess rồi mới đặt lệnh.', 'ok'); save(); return paint();
         case 'sync': if (resync(s.sym)) log(`Đã lấy lại giá London thật cho ${mxv(s.sym)}: ${px(mkt(s.sym).last)}.`); else log('Chưa có giá London thật để đồng bộ.', 'warn'); save(); return paint();
-        case 'reset': if (confirm('Xóa toàn bộ lệnh, vị thế và nhật ký giả lập trên trình duyệt này?')) { setRun(false); s = fresh(); view.center = null; view.selOrder = ''; view.mod = null; view.pending = null; save(); paint(); } return;
+        case 'reset': if (confirm('Xóa toàn bộ lệnh, vị thế và nhật ký giả lập trên trình duyệt này?')) { setRun(false); s = { ...fresh(), layout: s.layout, cm: s.cm, cd: s.cd, calc: s.calc }; view.center = null; view.selOrder = ''; view.mod = null; view.pending = null; save(); paint(); } return;
         default: return;
       }
     });
@@ -800,10 +803,10 @@
       paint();
     });
   }
-  function render() { if (mobileLayout() && window.VTSimM) { bindRoot(); return window.VTSimM.paint(); } if (!built || !$('simulatorRoot') || !$('simulatorRoot').querySelector('.dt')) build(); paint(); }
+  function render() { if (mobileLayout() && window.VTSimM) { bindRoot(); return window.VTSimM.paint(); } if (layoutNow() === 'cqgd' && window.VTSimD) { bindRoot(); return window.VTSimD.paint(); } if (!built || !$('simulatorRoot') || !$('simulatorRoot').querySelector('.dt')) build(); paint(); }
   function setLayout(l) { s.layout = l; built = false; save(); const r = $('simulatorRoot'); if (r) r.innerHTML = ''; render(); }
   window.VTSim = { get s() { return s; }, view, mkt, book, account, newOrder, send, cancel, cancelSide, modify, activate, toMarket, flatten, reverse, setRun, setFeed, setLayout,
     symbols, mxv, desc, STATUS, FIX, LIVE, roundTrips, working, rowsHtml, LESSONS, SCENARIOS, startLesson, coach, answerQuiz, analysis, save, log, endOfDay, chartData, lastTradingDay, londonOpen,
-    IM, MM, timerOn: () => !!timer, phone, px, vnd, sg, esc, clock, LOT_T };
+    IM, MM, timerOn: () => !!timer, phone, px, vnd, sg, esc, clock, LOT_T, depth, bindLadder, layoutNow };
   window.VTSimulator = { render };
 })();
