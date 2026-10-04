@@ -235,7 +235,7 @@
       const kind = E.CONTRACT_ROWS.includes(r.key) ? 'ct' : TRADE_KEYS.includes(r.key) ? 'tr' : '';
       const cells = cols.map(c => {
         const v = E.num(((kind ? eff : state.data.matrix)[r.key] || {})[c]);
-        if (kind) return `<td class="ledger-cell" data-goto="contracts" title="${kind === 'ct' ? 'Số từ Sổ hợp đồng (hàng thật)' : 'Số từ sổ Lệnh sàn (hàng ảo)'} – ghi / sửa ở thẻ 📒 Giao dịch">${v ? fmt(v) : '<span class="ledger-zero">0</span>'}</td>`;
+        if (kind) return `<td class="ledger-cell" data-ledger="${kind}" data-key="${r.key}" data-code="${c}" title="${kind === 'ct' ? 'Số cộng từ Sổ hợp đồng (hàng thật)' : 'Số cộng từ sổ Lệnh sàn (hàng ảo)'} – bấm để xem / sửa">${v ? fmt(v) : '<span class="ledger-zero">0</span>'}</td>`;
         return `<td><input type="number" step="${r.unit === 'lot' ? 1 : 0.01}" inputmode="decimal" class="cell-input" data-key="${r.key}" data-code="${c}" value="${v === 0 ? '' : v}" placeholder="0"${isViewer() ? ' disabled' : ''}></td>`;
       }).join('');
       const tag = kind === 'ct' ? ' <button type="button" class="ledger-tag" data-goto="contracts" title="Mở Sổ hợp đồng">📒 sổ HĐ</button>'
@@ -466,20 +466,59 @@
     if (window.VTGrades) window.VTGrades.render();
   }
 
-  // ---------- Tính giá FOB ----------
+  // ---------- Tính giá trừ lùi linh hoạt (gốc: giá nhân xô theo ngày) ----------
   function renderCalcOptions() {
     const sel = $('calcMonthSelect'); const fp = state.data.fobParams;
     const list = (state.quotes && state.quotes.coffee_liffe) || []; const current = sel.value || fp.contract;
     sel.innerHTML = list.length ? list.map(i => `<option value="${i.Name}" data-price="${E.num(i.Last)}">Tháng ${i.Month} (${i.Name}) – ${fmt(i.Last, 0)} USD</option>`).join('')
       : `<option value="${fp.contract}" data-price="0">${fp.contract} – chưa có giá</option>`;
     if ([...sel.options].some(o => o.value === current)) sel.value = current;
+    const items = (state.data.grades && state.data.grades.items) || [];
+    $('calcGrade').innerHTML = `<option value="">Nhân xô chưa phân loại (+0)</option>` + items.map(it => `<option value="${esc(it.grade)}">${esc(it.grade)} (+${fmt(it.dom || 0, 0)})</option>`).join('');
+    $('calcGrade').value = items.some(it => it.grade === fp.grade) ? fp.grade : '';
   }
   function calculateFob() {
     const fp = state.data.fobParams; const opt = $('calcMonthSelect').selectedOptions[0]; const london = opt ? E.num(opt.dataset.price) : 0;
-    if (!london) { $('resFobUsd').textContent = 'Chưa có giá sàn'; $('resFobVnd').textContent = '—'; $('resDomesticEq').textContent = '—'; $('formulaFob').textContent = ''; return; }
-    const r = E.computeFob(london, fp.diffUsd, fp.exchangeRate, fp.processingCostVnd);
-    $('resFobUsd').innerHTML = `${fmt(r.fobUsd, 0)} <small>USD/tấn</small>`; $('formulaFob').textContent = `= ${fmt(london, 0)} + (${signed(fp.diffUsd)}) USD`;
-    $('resFobVnd').innerHTML = `${fmt(r.fobVndKg, 0)} <small>VNĐ/kg</small>`; $('resDomesticEq').innerHTML = `${fmt(r.domesticVndKg, 0)} <small>VNĐ/kg</small>`;
+    const code = String($('calcMonthSelect').value || fp.contract || '').replace(/^RM/, '');
+    const gi = ((state.data.grades && state.data.grades.items) || []).find(it => it.grade === fp.grade) || null;
+    const markup = gi ? E.num(gi.dom) : 0, gname = gi ? gi.grade : 'nhân xô chưa phân loại';
+    const domAuto = state.domestic && state.domestic.avg ? state.domestic.avg : 0; const dom = fp.domManual || domAuto;
+    $('calcDomHint').textContent = fp.domManual ? '(nhập tay – xóa để dùng giá tự động)' : domAuto ? `(tự động giacaphe ${state.domestic.date || ''})` : '(chưa có giá – nhập tay)';
+    $('calcDomInput').placeholder = domAuto ? `${fmt(domAuto, 0)} (tự động)` : 'nhập giá nhân xô';
+    const r = E.diffCalc({ london, fx: fp.exchangeRate, domestic: dom, markup, cost: fp.processingCostVnd, margin: fp.marginVnd, diff: fp.diffUsd });
+    if (!r) { $('calcResults').innerHTML = '<p class="calc-empty">Chưa có giá sàn hoặc tỷ giá.</p>'; renderCalcDaily(code, markup, fp); return; }
+    const cls = v => (v > 0 ? 'up' : v < 0 ? 'down' : '');
+    const tableDiff = gi ? E.num(gi.diff) : null;
+    const verdict = tableDiff === null || r.diffNeed === null ? '' : tableDiff >= r.diffNeed ? '✅ đủ lời mong muốn' : tableDiff >= r.diffBreakeven ? '⚠️ có lời nhưng dưới mức mong muốn' : '❌ chưa đủ hòa vốn';
+    const A = dom ? `<div class="calc-block"><h4>① Từ giá nhân xô hôm nay → trừ lùi cần chào <small>so với RM${esc(code)} ${fmt(london, 0)}</small></h4>
+        <div class="calc-line">Giá hàng ${esc(gname)} tại kho = nhân xô ${fmt(dom, 0)} + ${fmt(markup, 0)} = <b>${fmt(r.gradeVnd, 0)} đ/kg</b></div>
+        <div class="calc-line">+ chi phí xuất khẩu ${fmt(fp.processingCostVnd, 0)} = giá vốn FOB <b>${fmt(r.breakevenVnd, 0)} đ/kg</b> = ${fmt(r.breakevenUsd, 0)} USD/t → <b class="${cls(r.diffBreakeven)}">diff hòa vốn ${signed(r.diffBreakeven, 0)} USD/t</b></div>
+        <div class="calc-line">+ lời mong muốn ${fmt(fp.marginVnd, 0)} = ${fmt(r.targetVnd, 0)} đ/kg = ${fmt(r.fobNeedUsd, 0)} USD/t</div>
+        <div class="calc-big">Trừ lùi / cộng lùi cần chào: <b class="${cls(r.diffNeed)}">${signed(r.diffNeed, 0)} USD/t</b> <small>(FOB ${fmt(r.fobNeedUsd, 0)} USD/t)</small></div>
+        <div class="calc-line muted-line">Trừ lùi nội địa hôm nay: nhân xô ${fmt(r.domUsd, 0)} USD/t − sàn ${fmt(london, 0)} = <b class="${cls(r.domDiff)}">${signed(r.domDiff, 0)} USD/t</b> (${r.domDiff >= 0 ? 'nhân xô đang cao hơn' : 'nhân xô đang thấp hơn'} giá sàn quy đổi)</div>
+        ${tableDiff !== null ? `<div class="calc-line">Bảng diff công ty cho loại này: <b>${signed(tableDiff, 0)}</b> → ${verdict}</div>` : ''}</div>`
+      : '<div class="calc-block"><h4>① Từ giá nhân xô</h4><p class="calc-empty">Chưa có giá nhân xô hôm nay – nhập tay ở ô "Giá nhân xô".</p></div>';
+    const B = `<div class="calc-block"><h4>② Từ diff chào khách ${signed(fp.diffUsd, 0)} → giá</h4>
+        <div class="calc-line">FOB = ${fmt(london, 0)} ${signed(fp.diffUsd, 0)} = <b>${fmt(r.fobUsd, 0)} USD/t</b> = <b>${fmt(r.fobVnd, 0)} đ/kg</b></div>
+        <div class="calc-big">Nhân xô tối đa được mua: <b>${fmt(r.maxDomVnd, 0)} đ/kg</b> <small>= FOB − chi phí ${fmt(fp.processingCostVnd, 0)} − mức cộng ${fmt(markup, 0)} − lời ${fmt(fp.marginVnd, 0)}</small></div>
+        ${r.vsToday !== null ? `<div class="calc-line">So với nhân xô hôm nay ${fmt(dom, 0)}: <b class="${cls(r.vsToday)}">${signed(r.vsToday, 0)} đ/kg</b> → ${r.vsToday >= 0 ? '✅ mua được, đạt lời mong muốn' : '⚠️ nhân xô đang đắt hơn mức mua được'}</div>` : ''}</div>`;
+    $('calcResults').innerHTML = A + B + `<details class="calc-formula"><summary>📐 Công thức</summary><ul>
+        <li>Giá hàng tại kho = nhân xô + mức cộng của loại (S13 5% +2.000 · S16/18 2% +4.000 · Clean G1 +6.000 · Đánh bóng +8.000 – sửa ở bảng diff, thẻ Bảng giá)</li>
+        <li>Giá vốn FOB = giá hàng tại kho + chi phí xuất khẩu · USD/t = đ/kg × 1000 ÷ tỷ giá</li>
+        <li>Diff hòa vốn = giá vốn FOB (USD/t) − giá sàn · Diff cần chào = (giá vốn FOB + lời) (USD/t) − giá sàn</li>
+        <li>Trừ lùi nội địa = nhân xô (USD/t) − giá sàn · FOB = giá sàn + diff · Nhân xô tối đa = FOB (đ/kg) − chi phí − mức cộng − lời</li></ul></details>`;
+    renderCalcDaily(code, markup, fp);
+  }
+  // Theo ngày: giá sàn kỳ chọn, nhân xô, tỷ giá → trừ lùi nội địa và diff hòa vốn của loại hàng đang chọn
+  function renderCalcDaily(code, markup, fp) {
+    const h = state.history || {}; const days = Object.keys(h).filter(d => h[d] && h[d].domestic).sort().reverse().slice(0, 10);
+    if (!days.length) { $('calcDaily').innerHTML = '<p class="calc-empty">📅 Bảng theo ngày: hệ thống bắt đầu lưu giá nhân xô và tỷ giá mỗi ngày từ 04/10/2026 – bảng sẽ đầy dần.</p>'; return; }
+    const rows = days.map(d => {
+      const x = h[d]; const L = E.num((x.robusta || {})['RM' + code]); const F = E.num(x.fx) || fp.exchangeRate;
+      const r = E.diffCalc({ london: L, fx: F, domestic: x.domestic, markup, cost: fp.processingCostVnd, margin: 0, diff: 0 });
+      return `<tr><td>${d.slice(8, 10)}/${d.slice(5, 7)}</td><td>${L ? fmt(L, 0) : '—'}</td><td>${fmt(x.domestic, 0)}</td><td>${fmt(F, 0)}</td><td class="${r && r.domDiff > 0 ? 'up' : 'down'}">${r ? signed(r.domDiff, 0) : '—'}</td><td>${r ? signed(r.diffBreakeven, 0) : '—'}</td></tr>`;
+    }).join('');
+    $('calcDaily').innerHTML = `<details class="calc-formula" open><summary>📅 Theo ngày (RM${esc(code)})</summary><div class="table-scroll"><table class="as-table calc-day-table"><tr><th>Ngày</th><th>Giá sàn</th><th>Nhân xô</th><th>Tỷ giá</th><th>Trừ lùi nội địa</th><th>Diff hòa vốn</th></tr>${rows}</table></div></details>`;
   }
 
   // ---------- Tham chiếu nội địa ----------
@@ -496,7 +535,7 @@
   }
   function applyDomestic(dm) {
     state.domestic = dm;
-    if (state.data) renderReference();
+    if (state.data) { renderReference(); calculateFob(); }
     renderDomesticBoard();
   }
   function renderDomesticBoard() {
@@ -522,6 +561,7 @@
   function applyData(d) {
     state.data = E.normalize(d); const fp = state.data.fobParams;
     $('calcDiffInput').value = fp.diffUsd; $('calcCostInput').value = fp.processingCostVnd;
+    $('calcDomInput').value = fp.domManual || ''; $('calcMarginInput').value = fp.marginVnd || '';
     $('calcFxAuto').checked = fp.fxAuto; $('calcFxInput').disabled = fp.fxAuto;
     if (fp.fxAuto && state.fx) fp.exchangeRate = state.fx.transfer;
     $('calcFxInput').value = fp.exchangeRate;
@@ -543,14 +583,18 @@
     } catch (e) { setDirty(true); toast('Lỗi lưu dữ liệu: ' + e.message, 'error'); }
     finally { setTimeout(() => { state.saving = false; }, 500); }
   }
-  async function loadHistory() { try { state.history = await api('/api/history'); fillCompareOptions(); if (state.tab === 'overview') renderCurve(); } catch (e) { /* bỏ qua */ } }
+  async function loadHistory() { try { state.history = await api('/api/history'); fillCompareOptions(); if (state.tab === 'overview') renderCurve(); if (state.data) calculateFob(); } catch (e) { /* bỏ qua */ } }
 
   // ---------- Sự kiện ----------
   $('positionBody').addEventListener('input', e => {
     const t = e.target; if (!t.classList.contains('cell-input')) return;
     state.data.matrix[t.dataset.key][t.dataset.code] = E.pick(t.value, 0); setDirty(true); recalcAll();
   });
-  $('positionBody').addEventListener('click', e => { if (e.target.closest('[data-goto="contracts"]')) showTab('contracts'); });
+  $('positionBody').addEventListener('click', e => {
+    const cell = e.target.closest('[data-ledger]');
+    if (cell && window.VTContracts && !isViewer()) return window.VTContracts.openCell(cell.dataset.ledger, cell.dataset.code, cell.dataset.key);
+    if (cell || e.target.closest('[data-goto="contracts"]')) showTab('contracts');
+  });
   // Sổ hợp đồng vừa thay đổi (ghi / chốt giá / giao hàng / xóa): vẽ lại ma trận, lưu ngay
   async function ledgerChanged(msg) {
     renderMatrix(); recalcAll();
@@ -560,6 +604,9 @@
     if (msg && !state.dirty) toast(msg, 'success');
   }
   $('calcMonthSelect').addEventListener('change', () => { state.data.fobParams.contract = $('calcMonthSelect').value; setDirty(true); calculateFob(); });
+  $('calcGrade').addEventListener('change', () => { state.data.fobParams.grade = $('calcGrade').value; setDirty(true); calculateFob(); });
+  $('calcDomInput').addEventListener('input', () => { state.data.fobParams.domManual = E.pick($('calcDomInput').value, 0); setDirty(true); calculateFob(); });
+  $('calcMarginInput').addEventListener('input', () => { state.data.fobParams.marginVnd = E.pick($('calcMarginInput').value, 0); setDirty(true); calculateFob(); });
   [['calcDiffInput', 'diffUsd'], ['calcFxInput', 'exchangeRate'], ['calcCostInput', 'processingCostVnd']].forEach(([id, key]) =>
     $(id).addEventListener('input', () => { state.data.fobParams[key] = E.pick($(id).value, 0); setDirty(true); calculateFob(); if (key === 'diffUsd' && state.tab === 'overview') renderCurve(); }));
   $('calcFxAuto').addEventListener('change', () => {

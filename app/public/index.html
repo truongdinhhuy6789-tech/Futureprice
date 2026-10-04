@@ -149,21 +149,23 @@
 
         <div class="bottom-grid">
           <section class="section-card calc-card">
-            <div class="section-header"><h3 class="section-title">🧮 TÍNH GIÁ FOB TỪ TRỪ LÙI</h3><span class="badge-tag">Xuất khẩu VN</span></div>
+            <div class="section-header"><h3 class="section-title">🧮 TÍNH GIÁ TRỪ LÙI – LINH HOẠT</h3><span class="badge-tag">Gốc: nhân xô theo ngày</span></div>
             <div class="calc-body">
               <div class="form-row">
                 <div class="form-group"><label>Kỳ hạn London tham chiếu:</label><select id="calcMonthSelect" class="form-control"></select></div>
-                <div class="form-group"><label>Mức trừ lùi / cộng lùi (Diff):</label><div class="input-with-addon"><input type="number" id="calcDiffInput" class="form-control" step="5" inputmode="decimal"><span class="addon">USD/tấn</span></div></div>
+                <div class="form-group"><label>Loại hàng (mức cộng vào nhân xô):</label><select id="calcGrade" class="form-control"></select></div>
               </div>
               <div class="form-row">
+                <div class="form-group"><label>Giá nhân xô: <span class="calc-hint" id="calcDomHint"></span></label><div class="input-with-addon"><input type="number" id="calcDomInput" class="form-control" step="100" inputmode="decimal" placeholder="tự động theo ngày"><span class="addon">đ/kg</span></div></div>
                 <div class="form-group"><label>Tỷ giá USD/VND: <label class="inline-check"><input type="checkbox" id="calcFxAuto"> theo VCB (mua CK)</label></label><div class="input-with-addon"><input type="number" id="calcFxInput" class="form-control" step="10" inputmode="decimal"><span class="addon">VNĐ</span></div></div>
-                <div class="form-group"><label>Chi phí gia công / bao bì / hao hụt:</label><div class="input-with-addon"><input type="number" id="calcCostInput" class="form-control" step="50" inputmode="decimal"><span class="addon">đ/kg</span></div></div>
               </div>
-              <div class="calc-result-box">
-                <div class="result-item highlight"><span class="res-label">GIÁ FOB CẢNG TP.HCM:</span><span class="res-value" id="resFobUsd">—</span><span class="res-formula" id="formulaFob"></span></div>
-                <div class="result-item"><span class="res-label">FOB quy đổi (mạn tàu):</span><span class="res-value" id="resFobVnd">—</span></div>
-                <div class="result-item primary"><span class="res-label">Giá nhân xô tương đương tại kho:</span><span class="res-value" id="resDomesticEq">—</span><span class="res-formula">= (FOB × Tỷ giá ÷ 1000) − Chi phí</span></div>
+              <div class="form-row three">
+                <div class="form-group"><label>Chi phí xuất khẩu (bao bì, vận chuyển, thủ tục):</label><div class="input-with-addon"><input type="number" id="calcCostInput" class="form-control" step="50" inputmode="decimal"><span class="addon">đ/kg</span></div></div>
+                <div class="form-group"><label>Lời mong muốn:</label><div class="input-with-addon"><input type="number" id="calcMarginInput" class="form-control" step="100" inputmode="decimal" placeholder="0"><span class="addon">đ/kg</span></div></div>
+                <div class="form-group"><label>Diff chào khách (cộng +, trừ −):</label><div class="input-with-addon"><input type="number" id="calcDiffInput" class="form-control" step="5" inputmode="decimal"><span class="addon">USD/t</span></div></div>
               </div>
+              <div class="calc-results" id="calcResults"></div>
+              <div class="calc-daily" id="calcDaily"></div>
             </div>
           </section>
 
@@ -212,7 +214,7 @@
           <div class="section-header">
             <div class="title-wrap">
               <h2 class="section-title">📉 HÀNG ẢO – LỆNH SÀN ROBUSTA LONDON</h2>
-              <p class="section-desc">Mỗi lệnh MUA / BÁN tự đổ vào dòng "Vị thế Robusta sàn HD Bank / PFS092" của ma trận (1 lot = 10 tấn). Liên kết lệnh với hợp đồng hàng thật để biết hợp đồng nào đã được phòng hộ và còn hở bao nhiêu.</p>
+              <p class="section-desc">Mỗi lệnh MUA / BÁN tự đổ vào dòng "Vị thế futures Robusta London" của ma trận (1 lot = 10 tấn). Liên kết lệnh với hợp đồng hàng thật để biết hợp đồng nào đã được phòng hộ và còn hở bao nhiêu.</p>
             </div>
             <div class="header-tools"><button id="btnNewTrade" class="btn btn-primary" title="Ghi lệnh mua / bán trên sàn"><span class="icon">➕</span> Lệnh sàn</button></div>
           </div>
@@ -253,6 +255,7 @@
             <div class="board-tools"><a class="btn btn-outline btn-sm" href="https://giacaphe.com/gia-ca-phe-truc-tuyen/" target="_blank" rel="noopener">Mở trang nguồn ↗</a><button class="btn btn-secondary btn-sm" data-recheck>🔄 Kiểm tra lại giá</button></div>
           </div>
           <div id="boardDomestic"></div>
+          <div id="boardClass"></div>
           <div id="boardGrades"></div>
           <div id="boardTables"></div>
           <p class="section-desc board-note">Ngày thông báo đầu tiên là ước tính (Robusta: 4 ngày làm việc, Arabica: 7 ngày làm việc trước ngày làm việc đầu tiên của tháng giao hàng; chưa trừ ngày lễ). Nên đảo/đóng vị thế trước ngày này.</p>

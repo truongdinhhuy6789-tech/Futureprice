@@ -114,7 +114,10 @@ function recordHistory(data) {
     const day = new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10); // ngày theo giờ Việt Nam
     const pick = list => Object.fromEntries((list || []).map(q => [q.Name, engine.num(q.Last)]).filter(([, v]) => v > 0));
     const hist = loadHistory();
-    hist[day] = { robusta: pick(data.coffee_liffe), arabica: pick(data.coffee_ice), updated: data.updated };
+    hist[day] = { ...(hist[day] || {}), robusta: pick(data.coffee_liffe), arabica: pick(data.coffee_ice), updated: data.updated };
+    // Giá nhân xô và tỷ giá trong ngày (cho bảng "Theo ngày" của công cụ tính trừ lùi)
+    if (market.domestic && market.domestic.avg) hist[day].domestic = market.domestic.avg;
+    if (market.fx && market.fx.transfer) hist[day].fx = market.fx.transfer;
     const days = Object.keys(hist).sort();
     days.slice(0, Math.max(0, days.length - HISTORY_KEEP_DAYS)).forEach(d => delete hist[d]);
     fs.writeFileSync(HISTORY_FILE + '.tmp', JSON.stringify(hist), 'utf8');
@@ -172,6 +175,13 @@ async function fetchDomestic() {
     market.domestic = { avg: toVnd(avg[1]), change: ch ? (/giảm/i.test(ch[1]) ? -1 : 1) * toVnd(ch[2]) : 0, high: high ? toVnd(high[1]) : null, provinces,
       date: (desc.match(/\d{2}\/\d{2}\/\d{4}/) || [])[0] || null, fetchedAt: new Date().toISOString(), source: 'giacaphe.com' };
     broadcast('domestic', market.domestic);
+    // Ghi giá nhân xô vào lịch sử theo ngày (cả khi sàn đứng yên cuối tuần)
+    try {
+      const day = new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10); const hist = loadHistory();
+      hist[day] = { ...(hist[day] || {}), domestic: market.domestic.avg, ...(market.fx && market.fx.transfer ? { fx: market.fx.transfer } : {}) };
+      if (!hist[day].robusta && market.quotes) hist[day].robusta = Object.fromEntries((market.quotes.coffee_liffe || []).map(q => [q.Name, engine.num(q.Last)]).filter(([, v]) => v > 0));
+      fs.writeFileSync(HISTORY_FILE + '.tmp', JSON.stringify(hist), 'utf8'); fs.renameSync(HISTORY_FILE + '.tmp', HISTORY_FILE);
+    } catch (e) { console.error('[Lịch sử nhân xô] Lỗi ghi:', e.message); }
   } catch (err) { console.error('[Giá nội địa] Lỗi:', err.message); }
 }
 fetchDomestic(); setInterval(fetchDomestic, DOMESTIC_EVERY_MS);

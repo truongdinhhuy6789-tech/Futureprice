@@ -16,7 +16,7 @@ Hệ thống trả lời một câu hỏi sống còn của doanh nghiệp xuấ
 Muốn trả lời, hệ thống gom 3 nguồn vị thế:
 
 1. **Hàng thực:** tồn kho và các hợp đồng mua/bán.
-2. **Tài khoản sàn:** lệnh futures ở HD Bank và PFS092.
+2. **Vị thế sàn (futures):** lệnh futures Robusta London (và Arabica New York nếu có).
 3. **Hợp đồng trừ lùi chưa chốt giá:** Diff/PTBF.
 
 Từ đó hệ thống tính **tổng vị thế ròng** cho từng kỳ hạn Robusta London, rồi đưa ra:
@@ -82,10 +82,15 @@ Trợ lý sẽ cảnh báo khi một dòng "bán" có số dương, hoặc dòng
 | Khối | Dòng nhập liệu | Công thức tổng của khối |
 |---|---|---|
 | **Hàng thực** | Tồn kho (không gồm hàng gởi); HĐ mua đã chốt giá chưa giao; HĐ mua đã giao chưa chốt giá; HĐ bán đã chốt giá chưa giao; HĐ bán đã giao chưa chốt giá | **Vị thế hàng thực** = tổng 5 dòng |
-| **Tài khoản sàn** | Robusta HD Bank; Arabica HD Bank; Robusta PFS092; Arabica PFS092 (đơn vị tấn, 1 lot Robusta = 10 t) | **Vị thế sàn** = tổng 4 dòng |
+| **Phòng hộ trên sàn** | Futures Robusta London (tự lấy từ sổ lệnh sàn); Futures Arabica New York (nhập tay) – đơn vị tấn, 1 lot Robusta = 10 t | **Vị thế sàn** = tổng 2 dòng |
 | **Trừ lùi** | HĐ mua trừ lùi chưa chốt giá; HĐ bán trừ lùi chưa chốt giá | **Vị thế trừ lùi** = tổng 2 dòng |
 | ⭐ **Dòng vàng** | | **TỔNG VỊ THẾ RÒNG = Hàng thực + Sàn + Trừ lùi** |
 | Theo dõi | Mua gởi, bán gởi chưa chốt giá; Spread lots | **Không** cộng vào tổng vị thế (chỉ để theo dõi) |
+
+- **Ô lấy từ sổ (📒 hợp đồng, 📉 lệnh sàn):** bấm vào ô để xem các hợp đồng/lệnh tạo ra số đó và sửa ngay tại chỗ (sửa, xóa, chuyển lệnh thành "chưa khớp", ghi lệnh mới).
+- **Lệnh chờ (⏳ chưa khớp):** lệnh mới đặt hoặc dự kiến, **không** tính vào vị thế, sổ lệnh và lãi/lỗ. Khi lệnh khớp trên sàn, bấm **✔ Khớp** và sửa giá khớp thực tế. Nút 🛡️ Hedge trên hợp đồng mặc định ghi thành lệnh chờ.
+- **Kế hoạch giao (🗓):** lần giao/nhận ghi ngày **sau hôm nay** là lịch tàu dự kiến, hợp đồng vẫn tính là chưa giao. Tới ngày đó hệ thống mới tính là đã giao; bấm **✔ Đã giao hôm nay** nếu giao sớm, hoặc sửa ngày nếu tàu đổi lịch.
+- Ví dụ: bán 38,4 t giá chốt 3.800 USD/t FOB, chưa mua hàng, chưa mua sàn → **−38,4 t (SHORT): giá tăng là lỗ**. Phòng hộ = MUA 4 lot cùng kỳ tham chiếu; khi lệnh khớp, dòng vàng về khoảng +1,6 t.
 
 - **Cách đọc dòng vàng:**
   - **Âm (SHORT):** hụt hàng. Giá tăng thì lỗ.
@@ -153,7 +158,7 @@ Các thông số (kỳ hạn, Diff, tỷ giá, chi phí) được lưu cùng s�
    - tồn kho;
    - hợp đồng mới ký hoặc mới chốt giá;
    - hợp đồng trừ lùi;
-   - lệnh sàn đã khớp.
+   - lệnh sàn đã khớp (lệnh chờ khớp rồi thì bấm ✔ Khớp).
 3. Bấm **💾 Lưu vị thế**. Khi nút có dấu "•" và màu cam, nghĩa là còn thay đổi chưa lưu.
 4. Mở **🤖 Trợ lý → Phân tích** để đọc nhận xét, khuyến nghị và kết quả soát lỗi dữ liệu.
 5. Cuối ngày: **📊 Xuất Excel** để lưu lịch sử. File tên `Bao_Cao_Vi_The_VietThien_<ngày>.csv`.

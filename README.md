@@ -8,7 +8,7 @@ Hệ thống nội bộ của Phòng Kinh doanh Xuất khẩu dùng để quản
 |---|---|
 | 📈 Tổng quan | Cho sếp: vị thế ròng, lời/lỗ khi giá chạy, đề xuất phòng hộ, biểu đồ, tóm tắt |
 | 📊 Vị thế | Ma trận LDC. Dòng hợp đồng (📒) và Robusta sàn (📉) tự lấy từ thẻ Giao dịch; tồn kho, Arabica, hàng gởi nhập tay; tính FOB từ trừ lùi; hạn mức rủi ro |
-| 📒 Giao dịch | **Hàng thật**: hợp đồng mua/bán giá cố định hoặc trừ lùi, chốt giá và giao hàng từng phần. **Hàng ảo**: lệnh sàn Robusta (HD Bank / PFS092), giá vốn bình quân, lãi/lỗ. Liên kết hai bên bằng 🛡️ Hedge (hiện phần còn hở) |
+| 📒 Giao dịch | **Hàng thật**: hợp đồng mua/bán giá cố định hoặc trừ lùi, chốt giá và giao hàng từng phần. **Hàng ảo**: lệnh sàn futures Robusta London (ghi tên tài khoản/môi giới nếu cần), giá vốn bình quân, lãi/lỗ. Liên kết hai bên bằng 🛡️ Hedge (hiện phần còn hở). Lệnh **⏳ chờ khớp** không tính vào vị thế; lần giao ghi **ngày tương lai** là kế hoạch, chưa tính là đã giao. Bấm ô sổ trong ma trận để sửa ngay |
 | 🛡️ Phòng hộ | So sánh 4 chiến lược (Futures, Put, Collar, Hybrid) theo 5 kịch bản giá |
 | 🌐 Bảng giá | Nhân xô trong nước, **giá FOB theo chủng loại** (diff báo giá, sửa trên trang), **chuẩn chất lượng ICE** (Class P/1/2/3/4, quy đổi R1/R2/R3), giá London / New York / Brazil |
 | 📚 Kiến thức | Thư viện bài viết có tìm kiếm không dấu; dữ liệu trong `app/public/knowledge.js` (tự thêm bài). Nút ⓘ trên các bảng mở đúng bài |

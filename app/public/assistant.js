@@ -43,17 +43,30 @@
       out.push({ lvl: pnl < 0 ? 'alert' : 'warn', key: `move-${w.c}-${Math.sign(mv)}-${Math.floor(Math.abs(mv) / th)}`, act: ['position', 'Xem vị thế'],
         html: `⚡ <b>Sàn biến động mạnh:</b> RM${w.c} <b>${signed(mv, 0)} USD/t</b> ${inSession ? 'kể từ lúc mở hệ thống' : `${open ? 'trong phiên hôm nay' : 'ở phiên gần nhất'} (${esc(w.q.PtcChange)}%)`} – vượt ngưỡng ${fmt(th, 0)} USD/t. Theo vị thế từng kỳ, công ty tạm tính <b>${signed(pnl, 0)} USD</b>${pos.net[w.i] ? ` (kỳ ${w.c} đang ${signed(pos.net[w.i], 1)} t)` : ` (kỳ ${w.c} không có vị thế)`}. ${pnl < 0 ? 'Giá đang chạy <b>ngược</b> vị thế – xem lại phòng hộ.' : pnl > 0 ? 'Giá đang chạy thuận vị thế.' : ''}` });
     }
+    // Mức theo dõi giá Class 1 (đặt ở thẻ Bảng giá)
+    const ca = d.classAlert || {};
+    if (ca.month && (ca.above || ca.below)) {
+      const p = priceOf(st, ca.month);
+      if (p && ca.above && p >= ca.above) out.push({ lvl: 'alert', key: `cls-up-${ca.month}-${ca.above}`, act: ['board', 'Xem giá Class 1'], html: `🔔 <b>Giá Class 1 RM${ca.month} = ${fmt(p, 0)} USD/t</b> đã lên trên mức theo dõi ${fmt(ca.above, 0)}.` });
+      if (p && ca.below && p <= ca.below) out.push({ lvl: 'alert', key: `cls-dn-${ca.month}-${ca.below}`, act: ['board', 'Xem giá Class 1'], html: `🔔 <b>Giá Class 1 RM${ca.month} = ${fmt(p, 0)} USD/t</b> đã xuống dưới mức theo dõi ${fmt(ca.below, 0)}.` });
+    }
     risk.alerts.filter(a => a.type === 'hedge').forEach(a => out.push({ lvl: 'warn', key: `limit-${a.code}`, act: ['contracts', 'Ghi lệnh sàn'],
       html: `🛡️ Kỳ <b>${a.code}</b> hở <b>${signed(a.value, 1)} t</b> (hạn mức ±${fmt(risk.limit, 0)}) → <b>${a.action} ${a.lots} lot RM${a.code}</b>.` }));
     if (risk.alerts.some(a => a.type === 'mismatch')) out.push({ lvl: 'warn', key: 'mismatch', html: '⚠️ <b>Lệch kỳ hạn</b>: có kỳ dư và kỳ hụt cùng lúc – rủi ro khi spread dãn; cân nhắc giao dịch spread.' });
     const cs = E.contractSummary(d.contracts, new Date());
     cs.due.filter(x => x.left <= 20).forEach(x => out.push({ lvl: x.left <= 7 ? 'alert' : 'warn', key: `due-${x.id}-${x.left <= 7}`, act: ['contracts', 'Chốt giá'],
       html: `⏰ <b>${esc(x.no)}</b>${x.party ? ' – ' + esc(x.party) : ''}: còn <b>${fmt(x.unfixedT, 1)} t chưa chốt giá</b>, hạn ≈ ${dayText(x.fnd)} (${x.left < 0 ? 'đã quá hạn' : `còn ${x.left} ngày`}).` }));
+    // Lệnh chờ chưa khớp: nhắc để không nhầm là đã phòng hộ
+    (d.trades || []).filter(t => !E.isFilled(t)).forEach(t => {
+      const p = priceOf(st, t.month); const c = (d.contracts || []).find(x => x.id === t.link);
+      out.push({ lvl: 'warn', key: `pend-${t.id}`, act: ['contracts', 'Xem lệnh chờ'],
+        html: `⏳ <b>Lệnh chờ chưa khớp:</b> ${t.side === 'buy' ? 'MUA' : 'BÁN'} ${fmt(t.lots, t.lots % 1 ? 2 : 0)} lot RM${esc(t.month)}${t.price ? ` @${fmt(t.price, 0)}` : ''}${p ? ` (giá hiện tại ${fmt(p, 0)})` : ''}${c ? ` cho <b>${esc(c.no)}</b>` : ''} – <b>chưa tính vào vị thế</b>. Khớp rồi thì bấm ✔ Khớp ở thẻ Giao dịch.` });
+    });
     const book = E.futuresBook(d.trades, c => priceOf(st, c));
     book.list.filter(g => g.pos).forEach(g => {
       const f = E.firstNoticeDay('RM' + g.month); if (!f) return; const left = E.daysBetween(new Date(), f);
       if (left <= 15) out.push({ lvl: left <= 5 ? 'alert' : 'warn', key: `fnd-${g.account}-${g.month}`, act: ['contracts', 'Xem lệnh'],
-        html: `📉 Lệnh sàn <b>RM${g.month}</b> (${E.ACCOUNTS[g.account]}) đang mở ${signed(g.pos, 0)} lot – ngày thông báo đầu tiên ${dayText(f)} (${left < 0 ? 'đã qua' : `còn ${left} ngày`}): đóng hoặc đảo kỳ.` });
+        html: `📉 Lệnh sàn <b>RM${g.month}</b>${g.account ? ' (' + esc(g.account) + ')' : ''} đang mở ${signed(g.pos, 0)} lot – ngày thông báo đầu tiên ${dayText(f)} (${left < 0 ? 'đã qua' : `còn ${left} ngày`}): đóng hoặc đảo kỳ.` });
     });
     (d.contracts || []).forEach(c => {
       const exp = E.contractExposure(c); if (!exp) return;
@@ -133,7 +146,7 @@
     <h4>6 thẻ chính</h4><ol class="as-list">
       <li><b>📈 Tổng quan</b> (cho sếp): vị thế ròng, lời/lỗ khi giá chạy, đề xuất phòng hộ, biểu đồ, tóm tắt.</li>
       <li><b>📊 Vị thế</b>: ma trận LDC. Các dòng hợp đồng (📒) và Robusta sàn (📉) tự lấy từ thẻ Giao dịch; tồn kho, Arabica, hàng gởi nhập tay. Có công cụ tính FOB từ trừ lùi, hạn mức rủi ro.</li>
-      <li><b>📒 Giao dịch</b>: <b>hàng thật</b> (hợp đồng mua/bán, chốt giá, giao hàng) và <b>hàng ảo</b> (lệnh sàn HD Bank/PFS092), liên kết với nhau bằng 🛡️ Hedge.</li>
+      <li><b>📒 Giao dịch</b>: <b>hàng thật</b> (hợp đồng mua/bán, chốt giá, giao hàng) và <b>hàng ảo</b> (lệnh sàn futures Robusta London), liên kết với nhau bằng 🛡️ Hedge.</li>
       <li><b>🛡️ Phòng hộ</b>: so sánh 4 chiến lược (Futures, Put, Collar, Hybrid) theo 5 kịch bản giá, tự chạy theo giá sàn trực tiếp.</li>
       <li><b>🌐 Bảng giá</b>: nhân xô trong nước, giá FOB theo chủng loại (diff), chuẩn chất lượng ICE, giá London/New York/Brazil.</li>
       <li><b>📚 Kiến thức</b>: thư viện bài viết có tìm kiếm; nút ⓘ trên các bảng mở đúng bài.</li></ol>
@@ -142,7 +155,7 @@
     <h4>Cơ chế tính</h4>
     <div class="as-formula"><b>Tổng vị thế ròng = Hàng thực + Sàn + Trừ lùi</b> (từng kỳ hạn; hàng gởi và spread lots chỉ theo dõi)</div>
     <div class="as-formula">Hợp đồng: đã chốt chưa giao → dòng "đã chốt giá chưa giao"; đã giao chưa chốt → "đã giao chưa chốt"; chưa chốt chưa giao → dòng trừ lùi; đã chốt và đã giao → hoàn tất</div>
-    <div class="as-formula">Lệnh sàn: MUA +10 t/lot, BÁN −10 t/lot vào dòng Robusta của tài khoản tương ứng</div>
+    <div class="as-formula">Lệnh sàn: MUA +10 t/lot, BÁN −10 t/lot vào dòng "Vị thế futures Robusta London"</div>
     <div class="as-formula">Lời/lỗ khi London tăng ΔP = Vị thế ròng × ΔP · Vượt hạn mức → số lot = |vị thế| ÷ 10</div>
     <div class="as-formula">Spread = kỳ gần − kỳ xa · FOB = giá sàn + diff · đ/kg = USD/t × tỷ giá ÷ 1000</div>
     <h4>Bot Telegram</h4><ol class="as-list"><li>✈️ Telegram → Token + Chat ID → Lưu → Gửi thử. Lệnh: <code>/gia</code> <code>/vithe</code> <code>/spread</code> <code>/fob</code> <code>/tuvan</code>.</li></ol>`;
@@ -200,7 +213,10 @@
       L.push(`📋 <b>So bảng diff</b> (${esc(gi.grade)} ${signed(gi.diff, 0)}, báo giá ${dmyIso(d.grades.date)}): giá tham chiếu hôm nay <b>${fmt(ref, 0)} USD/t</b>${usd ? ` → hợp đồng ${gap >= 0 ? 'cao hơn' : 'thấp hơn'} <b>${fmt(Math.abs(gap), 0)} USD/t</b> (${signed(gap * qty, 0)} USD cả lô) ${ok ? '✅' : '⚠️ nên đàm phán lại'}` : ''}`);
     }
     const cls = E.iceClassFor(s.grade); if (cls && cls !== '—') L.push(`📏 <b>Chất lượng:</b> ${esc(s.grade)} ≈ ICE <b>Class ${cls}</b>${cls === '1' ? ' (chuẩn giá sàn London)' : ` (${signed(E.ICE_CLASSES.find(x => x.cls === cls).adj, 0)} USD/t khi giao lên sàn)`}`);
-    if (usd && fx && dom) L.push(`🇻🇳 <b>So nhân xô:</b> ${fmt(usd * fx / 1000, 0)} − ${fmt(dom, 0)} = <b>${signed(usd * fx / 1000 - dom, 0)} đ/kg</b> – chưa trừ chi phí chế biến${/wp/i.test(s.grade) ? ', đánh bóng' : ''}, tỷ lệ thu hồi${screen18(s.grade) ? ' S18' : ''}, bao bì, vận chuyển ra cảng`);
+    if (usd && fx && dom && gi && gi.dom) {
+      const cost = dom + E.num(gi.dom), sale = Math.round(usd * fx / 1000), m = sale - cost; const good = s.side === 'sell' ? m >= 0 : m <= 0;
+      L.push(`🏭 <b>Giá vốn nội địa ${esc(gi.grade)}:</b> nhân xô ${fmt(dom, 0)} + ${fmt(gi.dom, 0)} = <b>${fmt(cost, 0)} đ/kg</b>; hợp đồng ${fmt(sale, 0)} đ/kg → <b>${s.side === 'sell' ? (m >= 0 ? 'lời' : 'LỖ') : (m <= 0 ? 'rẻ hơn thị trường' : 'đắt hơn thị trường')} ${fmt(Math.abs(m), 0)} đ/kg ≈ ${fmt(Math.abs(m) * qty / 1000, 1)} triệu đồng cả lô</b> ${good ? '✅' : '⚠️'} (chưa trừ chi phí xuất khẩu)`);
+    } else if (usd && fx && dom) L.push(`🇻🇳 <b>So nhân xô:</b> ${fmt(usd * fx / 1000, 0)} − ${fmt(dom, 0)} = <b>${signed(usd * fx / 1000 - dom, 0)} đ/kg</b> – chưa trừ chi phí chế biến${/wp/i.test(s.grade) ? ', đánh bóng' : ''}, tỷ lệ thu hồi${screen18(s.grade) ? ' S18' : ''}, bao bì, vận chuyển ra cảng`);
     const trial = { ...d, contracts: (d.contracts || []).concat([E.normalizeContract({ id: '_thu', side: s.side, qty, pricing: s.pricing, price: s.price, unit: s.unit, diff: s.diff || (gi ? gi.diff : 0), basis })]) };
     const before = E.computePositions(d), after = E.computePositions(trial); let i = d.columns.indexOf(basis); if (i < 0) i = 0;
     L.push(`⚖️ <b>Vị thế kỳ ${d.columns[i]}:</b> ${signed(before.net[i], 1)} → <b>${signed(after.net[i], 1)} t</b> · tổng ròng ${signed(before.totals.net, 1)} → <b>${signed(after.totals.net, 1)} t</b> (hạn mức ±${fmt(d.riskLimit, 0)} t/kỳ)${Math.abs(after.net[i]) > d.riskLimit ? ' → <b>vượt hạn mức, phải phòng hộ</b>' : ''}`);
@@ -230,14 +246,15 @@
     const d = st.data; const pos = E.computePositions(d); const risk = E.analyzeRisk(pos, { limit: d.riskLimit, priceMove: d.priceMoveUsd });
     const lines = risk.alerts.filter(a => a.type === 'hedge').map(a => `🛡️ Kỳ <b>${a.code}</b> hở ${signed(a.value, 1)} t → <b>${a.action} ${a.lots} lot RM${a.code}</b>`);
     (d.contracts || []).forEach(c => { const exp = E.contractExposure(c); if (!exp) return; const linked = E.linkedLots(d.trades, c.id); const rest = E.round2(exp + linked * 10) || 0;
-      if (Math.abs(rest) >= 5) lines.push(`🔗 <b>${esc(c.no)}</b> (${c.side === 'buy' ? 'mua' : 'bán'} ${fmt(c.qty, 1)} t, RM${esc(c.basis)}): còn hở ${signed(rest, 1)} t → <b>${rest < 0 ? 'MUA' : 'BÁN'} ${Math.max(1, Math.round(Math.abs(rest) / 10))} lot RM${esc(c.basis)}</b> (bấm 🛡️ Hedge trên hợp đồng)`); });
+      const pend = E.pendingLots(d.trades, c.id);
+      if (Math.abs(rest) >= 5) lines.push(`🔗 <b>${esc(c.no)}</b> (${c.side === 'buy' ? 'mua' : 'bán'} ${fmt(c.qty, 1)} t, RM${esc(c.basis)}): còn hở ${signed(rest, 1)} t → <b>${rest < 0 ? 'MUA' : 'BÁN'} ${Math.max(1, Math.round(Math.abs(rest) / 10))} lot RM${esc(c.basis)}</b>${pend ? ` – đã có lệnh chờ ${signed(pend, 0)} lot chưa khớp: khớp rồi bấm ✔ Khớp` : ' (bấm 🛡️ Hedge trên hợp đồng)'}`); });
     return `<b>Phòng hộ cần làm</b> (hạn mức ±${fmt(risk.limit, 0)} t/kỳ, vị thế ròng tổng ${signed(pos.totals.net, 1)} t)<ul class="as-list">${(lines.length ? lines : ['✅ Không kỳ nào vượt hạn mức và các hợp đồng đã được phòng hộ trong phạm vi 1 lot.']).map(x => `<li>${x}</li>`).join('')}</ul>`
       + '<p class="as-muted">Nguyên tắc: âm (thiếu hàng) → MUA; dương (dư hàng) → BÁN; cùng kỳ tham chiếu với hợp đồng; không đầu cơ.</p><div class="as-actions"><button type="button" class="btn btn-sm btn-outline" data-as-goto="contracts">📒 Mở Giao dịch</button><button type="button" class="btn btn-sm btn-outline" data-as-kb="khi-nao-mua-ban">📚 Khi nào mua/bán</button></div>';
   }
   function dueAnswer(st) {
     const d = st.data; const cs = E.contractSummary(d.contracts, new Date()); const book = E.futuresBook(d.trades, c => priceOf(st, c));
     const L = cs.due.map(x => `⏰ <b>${esc(x.no)}</b>${x.party ? ' – ' + esc(x.party) : ''}: ${fmt(x.unfixedT, 1)} t chưa chốt (RM${x.basis}) – hạn ≈ <b>${dayText(x.fnd)}</b> (${x.left < 0 ? 'đã quá hạn' : `còn ${x.left} ngày`})`);
-    book.list.filter(g => g.pos).forEach(g => { const f = E.firstNoticeDay('RM' + g.month); if (f) L.push(`📉 Lệnh RM${g.month} (${E.ACCOUNTS[g.account]}) ${signed(g.pos, 0)} lot – ngày thông báo đầu tiên ${dayText(f)} (còn ${E.daysBetween(new Date(), f)} ngày)`); });
+    book.list.filter(g => g.pos).forEach(g => { const f = E.firstNoticeDay('RM' + g.month); if (f) L.push(`📉 Lệnh RM${g.month}${g.account ? ' (' + esc(g.account) + ')' : ''} ${signed(g.pos, 0)} lot – ngày thông báo đầu tiên ${dayText(f)} (còn ${E.daysBetween(new Date(), f)} ngày)`); });
     return `<b>Hạn chốt giá & hạn lệnh sàn</b><ul class="as-list">${(L.length ? L : ['✅ Không có hợp đồng trừ lùi chưa chốt hay lệnh sàn đang mở.']).map(x => `<li>${x}</li>`).join('')}</ul><div class="as-actions"><button type="button" class="btn btn-sm btn-outline" data-as-kb="chot-gia">📚 Quy trình chốt giá</button><button type="button" class="btn btn-sm btn-outline" data-as-kb="roll">📚 Đảo kỳ</button></div>`;
   }
   function gradeAnswer(st, q) {
@@ -246,6 +263,15 @@
     const one = s.grade ? E.matchGrade(g, s.grade) : null; const list = one ? [one] : (g.items || []);
     return `<b>Giá FOB theo chủng loại</b> – RM${ref} ${lon ? fmt(lon, 0) : '—'} + diff (báo giá ${dmyIso(g.date)})<table class="as-table"><tr><th>Loại</th><th>Diff</th><th>FOB</th><th>đ/kg</th></tr>${list.map(it => { const fob = lon ? lon + E.num(it.diff) : 0; return `<tr><td>${esc(it.grade)}<br><small>ICE Class ${E.iceClassFor(it.grade) || '—'}</small></td><td>${signed(it.diff, 0)}</td><td><b>${fob ? fmt(fob, 0) : '—'}</b></td><td>${fob && fx ? fmt(fob * fx / 1000, 0) : '—'}</td></tr>`; }).join('')}</table>`
       + `<p class="as-muted">${dom ? `Nhân xô TB ${fmt(dom, 0)} đ/kg. ` : ''}FOB = giá sàn hiện tại + diff của bảng báo giá (chưa điều chỉnh chênh lệch giữa các kỳ).</p><div class="as-actions"><button type="button" class="btn btn-sm btn-outline" data-as-goto="board">🌐 Bảng giá</button><button type="button" class="btn btn-sm btn-outline" data-as-kb="diff">📚 Diff là gì</button></div>`;
+  }
+  // Giá theo hạng chất lượng (Class 1 = giá sàn) kèm hàng Việt Nam tương đương, FOB thị trường và giá vốn nội địa
+  function classAnswer(st) {
+    const d = st.data; const ref = (d.classAlert && d.classAlert.month) || String(d.fobParams.contract || '').replace(/^RM/, '') || d.columns[1];
+    const p = priceOf(st, ref), fx = fxOf(st), dom = domOf(st); const L = E.classLadder(p, d.grades);
+    return `<b>Giá theo hạng chất lượng – RM${ref}</b> (Class 1 = giá sàn <b>${p ? fmt(p, 0) : '—'} USD/t</b>${p && fx ? ` ≈ ${fmt(p * fx / 1000, 0)} đ/kg` : ''})`
+      + `<table class="as-table"><tr><th>Hạng</th><th>Giao sàn</th><th>Hàng VN</th><th>FOB thị trường</th></tr>${L.map(r => `<tr><td>Class ${r.cls}</td><td><b>${r.exchange ? fmt(r.exchange, 0) : '—'}</b></td><td><small>${esc(r.vn)}</small></td><td>${r.fobLo ? (r.fobLo === r.fobHi ? fmt(r.fobLo, 0) : `${fmt(r.fobLo, 0)}–${fmt(r.fobHi, 0)}`) : '—'}</td></tr>`).join('')}</table>`
+      + `<ul class="as-list">${(d.grades.items || []).map(it => { const ec = E.gradeEconomics(it, p, fx, dom); return ec.marginVnd === null ? '' : `<li>${esc(it.grade)}: giá vốn nội địa ${fmt(ec.costVnd, 0)} đ/kg (nhân xô + ${fmt(it.dom, 0)}) · FOB ${fmt(ec.fobVnd, 0)} đ/kg → biên <b>${signed(ec.marginVnd, 0)} đ/kg</b></li>`; }).join('')}</ul>`
+      + '<p class="as-muted">Giá giao sàn = giá sàn + mức cộng/trừ của hạng (chỉ khi giao lên sàn). FOB thị trường = giá sàn + diff bảng báo giá.</p><div class="as-actions"><button type="button" class="btn btn-sm btn-outline" data-as-goto="board">📏 Theo dõi Class 1</button><button type="button" class="btn btn-sm btn-outline" data-as-kb="san-vs-hang-that">📚 Sàn London là hàng loại nào</button></div>';
   }
   function priceAnswer(st) {
     const list = (st.quotes || {}).coffee_liffe || []; const ny = ((st.quotes || {}).coffee_ice || [])[0]; const dm = st.domestic; const fx = fxOf(st);
@@ -268,6 +294,7 @@
     if (!concept && /(tinh hinh|tong quan|bao cao|tom tat|vi the (hom nay|hien tai|the nao|ra sao)|hom nay the nao)/.test(n)) return summaryAnswer(st);
     if (!concept && /(phong ho|hedge|bao nhieu lot|can mua|can ban|con ho|vuot han muc)/.test(n)) return hedgeAnswer(st);
     if (!concept && /(han chot|sap het han|sap den han|ngay thong bao|sap toi han)/.test(n)) return dueAnswer(st);
+    if (!concept && /(class|theo hang|gia chuan|bien loi|gia von|lo lai tung loai)/.test(n)) return classAnswer(st);
     if (!concept && /(gia|fob)/.test(n) && /(s1[2-9]|\b1[2-9]\s*(wp|clean)|wp\b|wet polish|clean|chung loai|tung loai|cac loai)/.test(n)) return gradeAnswer(st, q);
     if (!concept && /(gia (london|san|robusta|hom nay|nhan xo)|london hom nay|nhan xo hom nay|ty gia hom nay|gia ca phe hom nay)/.test(n)) return priceAnswer(st);
     return kbAnswer(q);

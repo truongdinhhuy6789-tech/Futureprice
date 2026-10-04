@@ -21,10 +21,8 @@
     { key: 'buy_unfixed_shipped', group: 'physical', unit: 't', label: 'Hợp đồng mua đã giao hàng chưa chốt giá' },
     { key: 'sell_fixed_unshipped', group: 'physical', unit: 't', label: 'Hợp đồng bán đã chốt giá chưa giao hàng' },
     { key: 'sell_unfixed_shipped', group: 'physical', unit: 't', label: 'Hợp đồng bán đã giao hàng chưa chốt giá' },
-    { key: 'hedge_robusta_hdbank', group: 'futures', unit: 't', label: 'Vị thế Robusta sàn HD Bank' },
-    { key: 'hedge_arabica_hdbank', group: 'futures', unit: 't', label: 'Vị thế Arabica sàn HD Bank' },
-    { key: 'hedge_robusta_pfs', group: 'futures', unit: 't', label: 'Vị thế Robusta sàn PFS092' },
-    { key: 'hedge_arabica_pfs', group: 'futures', unit: 't', label: 'Vị thế Arabica sàn PFS092' },
+    { key: 'hedge_robusta', group: 'futures', unit: 't', label: 'Vị thế futures Robusta London' },
+    { key: 'hedge_arabica', group: 'futures', unit: 't', label: 'Vị thế futures Arabica New York' },
     { key: 'diff_buy_unfixed', group: 'diff', unit: 't', label: 'Hợp đồng mua trừ lùi chưa chốt giá' },
     { key: 'diff_sell_unfixed', group: 'diff', unit: 't', label: 'Hợp đồng bán trừ lùi chưa chốt giá' },
     { key: 'consignment_buy', group: 'memo', unit: 't', label: 'Mua gởi chưa chốt giá' },
@@ -32,9 +30,11 @@
     { key: 'spread_futures_lots', group: 'memo', unit: 'lot', label: 'Spread Position Futures Only' },
     { key: 'spread_combined_lots', group: 'memo', unit: 'lot', label: 'Spread Position Combined' }
   ];
+  // Dòng cũ đặt theo tên tài khoản riêng (HD Bank / PFS092) → dòng chuẩn
+  const LEGACY_ROWS = { hedge_robusta_hdbank: 'hedge_robusta', hedge_robusta_pfs: 'hedge_robusta', hedge_arabica_hdbank: 'hedge_arabica', hedge_arabica_pfs: 'hedge_arabica' };
   const GROUPS = {
     physical: 'VỊ THẾ HÀNG THỰC (PHYSICAL)',
-    futures: 'VỊ THẾ TÀI KHOẢN PHÒNG HỘ TRÊN SÀN (FUTURES HEDGING)',
+    futures: 'VỊ THẾ PHÒNG HỘ TRÊN SÀN (FUTURES)',
     diff: 'HỢP ĐỒNG TRỪ LÙI (DIFF / PTBF)',
     memo: 'THEO DÕI HÀNG GỞI & SPREAD LOTS (không cộng vào tổng vị thế)'
   };
@@ -57,16 +57,25 @@
     { cls: '3', label: 'Class 3', defects: 7.5, fm: 1.0, screen: '≥ 90% trên sàng 13, ≥ 96% trên sàng 12', minScreen: 13, adj: -60 },
     { cls: '4', label: 'Class 4', defects: 8.0, fm: 1.0, screen: '≥ 90% trên sàng 12', minScreen: 12, adj: -90 }
   ];
-  // Bảng diff FOB theo chủng loại (báo giá công ty). Diff = FOB − giá sàn kỳ tham chiếu
+  // Bảng diff FOB theo chủng loại (báo giá công ty). Diff = FOB − giá sàn kỳ tham chiếu.
+  // dom = mức cộng so với giá nhân xô (đ/kg) để ra hàng thành phẩm loại đó trong nước (số liệu thực tế công ty, 04/10/2026)
   const DEFAULT_GRADES = { date: '2026-08-27', refMonth: 'U26', refPrice: 3742, source: 'Báo giá FOB ngày 27/08/2026', items: [
-    { grade: 'Robusta S13 Clean 5% BB', fob: 3908, diff: 166 },
-    { grade: 'Robusta S16 Clean 2% BB', fob: 4004, diff: 262 },
-    { grade: 'Robusta S18 Clean 2% BB', fob: 4004, diff: 262 },
-    { grade: 'Robusta S16 Clean', fob: 4100, diff: 358 },
-    { grade: 'Robusta S18 Clean', fob: 4100, diff: 358 },
-    { grade: 'Robusta S16 Wet Polished', fob: 4177, diff: 435 },
-    { grade: 'Robusta S18 Wet Polished', fob: 4177, diff: 435 }
+    { grade: 'Robusta S13 Clean 5% BB', fob: 3908, diff: 166, dom: 2000 },
+    { grade: 'Robusta S16 Clean 2% BB', fob: 4004, diff: 262, dom: 4000 },
+    { grade: 'Robusta S18 Clean 2% BB', fob: 4004, diff: 262, dom: 4000 },
+    { grade: 'Robusta S16 Clean', fob: 4100, diff: 358, dom: 6000 },
+    { grade: 'Robusta S18 Clean', fob: 4100, diff: 358, dom: 6000 },
+    { grade: 'Robusta S16 Wet Polished', fob: 4177, diff: 435, dom: 8000 },
+    { grade: 'Robusta S18 Wet Polished', fob: 4177, diff: 435, dom: 8000 }
   ] };
+  // Kinh tế từng loại hàng: FOB hôm nay = giá sàn + diff; giá vốn nội địa = nhân xô + mức cộng; biên = FOB (đ/kg) − giá vốn
+  function gradeEconomics(item, london, fx, domestic) {
+    const L = num(london), F = num(fx), D = num(domestic);
+    const fobUsd = L ? L + num(item.diff) : null, fobVnd = fobUsd && F ? Math.round(fobUsd * F / 1000) : null;
+    const costVnd = D ? D + num(item.dom) : null, costUsd = costVnd && F ? round2(costVnd * 1000 / F) : null;
+    return { fobUsd, fobVnd, costVnd, costUsd, marginVnd: fobVnd !== null && costVnd !== null ? fobVnd - costVnd : null,
+      marginUsd: fobUsd !== null && costUsd !== null ? round2(fobUsd - costUsd) : null, domDiff: costUsd !== null && L ? round2(costUsd - L) : null };
+  }
   // Đọc quy cách từ tên hàng: cỡ sàng, đánh bóng (WP), sạch (Clean), % đen vỡ, R1/R2/R3
   function gradeInfo(name) {
     const s = String(name || '').toUpperCase().replace(/WET\s*POLISHED|ĐÁNH\s*BÓNG/g, 'WP');
@@ -94,12 +103,33 @@
     });
     return best;
   }
+  // Hàng Việt Nam tương đương từng hạng ICE (theo % đen vỡ, tạp chất, cỡ sàng)
+  const CLASS_VN = { P: 'R1 S16/S18 rất sạch (lỗi ≤ 0,5%, tạp chất ≤ 0,2%)', 1: 'R1 S16/S18 (đen vỡ ≤ 2%), Clean, Wet Polished', 2: 'R2 S13 (đen vỡ 5%, tạp chất 1%)', 3: 'R3 – đen vỡ 5–7,5%', 4: 'Đen vỡ 7,5–8%' };
+  // Thang giá theo hạng: giá giao lên sàn = giá sàn (Class 1) + mức cộng/trừ của hạng; kèm khoảng diff thị trường (bảng diff) của các loại hàng cùng hạng
+  function classLadder(london, grades) {
+    const p = num(london);
+    return ICE_CLASSES.map(c => {
+      const items = ((grades && grades.items) || []).filter(it => iceClassFor(it.grade) === c.cls);
+      const diffs = items.map(it => num(it.diff));
+      const lo = diffs.length ? Math.min(...diffs) : null, hi = diffs.length ? Math.max(...diffs) : null;
+      return { cls: c.cls, label: c.label, adj: c.adj, exchange: p ? p + c.adj : null, vn: CLASS_VN[c.cls], items: items.map(it => it.grade),
+        diffLo: lo, diffHi: hi, fobLo: p && lo !== null ? p + lo : null, fobHi: p && hi !== null ? p + hi : null,
+        premiumLo: lo !== null ? lo - c.adj : null, premiumHi: hi !== null ? hi - c.adj : null };
+    });
+  }
+  // Theo dõi giá Class 1: { month: kỳ hạn, above, below } – báo khi giá kỳ đó vượt lên trên / xuống dưới mức đặt
+  function normalizeClassAlert(a) {
+    const x = a && typeof a === 'object' ? a : {}; const m = String(x.month || '').toUpperCase();
+    return { month: parseCode(m) ? m : '', above: Math.max(0, num(x.above)), below: Math.max(0, num(x.below)) };
+  }
   // Đổi diff sang kỳ tham chiếu khác: FOB không đổi → diff mới = diff cũ + (giá kỳ cũ − giá kỳ mới)
   const convertDiff = (diff, oldPrice, newPrice) => num(diff) + num(oldPrice) - num(newPrice);
   function normalizeGrades(g) {
     const x = g && typeof g === 'object' && Array.isArray(g.items) ? g : DEFAULT_GRADES;
+    // Dữ liệu cũ chưa có mức cộng nội địa → lấy theo loại hàng trùng tên trong bảng mặc định
+    const domOf = it => (it && it.dom !== undefined && it.dom !== '' ? num(it.dom) : num((DEFAULT_GRADES.items.find(d => d.grade === String((it && it.grade) || '').trim()) || {}).dom));
     return { date: /^\d{4}-\d{2}-\d{2}$/.test(String(x.date || '')) ? x.date : '', refMonth: parseCode(x.refMonth) ? String(x.refMonth).toUpperCase() : '', refPrice: num(x.refPrice),
-      source: String(x.source || '').slice(0, 120), items: x.items.map(it => ({ grade: String((it && it.grade) || '').trim().slice(0, 80), fob: num(it && it.fob), diff: num(it && it.diff) })).filter(it => it.grade) };
+      source: String(x.source || '').slice(0, 120), items: x.items.map(it => ({ grade: String((it && it.grade) || '').trim().slice(0, 80), fob: num(it && it.fob), diff: num(it && it.diff), dom: domOf(it) })).filter(it => it.grade) };
   }
 
   // ---------- Số liệu ----------
@@ -177,13 +207,22 @@
       if (Array.isArray(row)) row.forEach((v, i) => { const c = targetOf(i); if (c) out.matrix[r.key][c] = num(v); });
       else if (row && typeof row === 'object') Object.keys(row).forEach(c => { out.matrix[r.key][c] = num(row[c]); });
     });
+    // Dữ liệu cũ tách theo tài khoản riêng (file Excel nội bộ cũ) → cộng dồn vào dòng futures chuẩn, không mất số
+    Object.entries(LEGACY_ROWS).forEach(([old, k]) => {
+      const row = src[old]; const add = (c, v) => { if (c && out.matrix[k][c] !== undefined) out.matrix[k][c] = round2(out.matrix[k][c] + num(v)) || 0; };
+      if (Array.isArray(row)) row.forEach((v, i) => add(targetOf(i), v));
+      else if (row && typeof row === 'object') Object.keys(row).forEach(c => add(c, row[c]));
+    });
     const fp = raw.fobParams || {};
     out.fobParams = {
       contract: fp.contract || fp.contractMonth || base.fobParams.contract,
       diffUsd: pick(fp.diffUsd, base.fobParams.diffUsd),
       exchangeRate: pick(fp.exchangeRate, base.fobParams.exchangeRate),
       processingCostVnd: pick(fp.processingCostVnd, base.fobParams.processingCostVnd),
-      fxAuto: fp.fxAuto === undefined ? true : !!fp.fxAuto
+      fxAuto: fp.fxAuto === undefined ? true : !!fp.fxAuto,
+      grade: String(fp.grade || '').slice(0, 80),            // loại hàng ('' = nhân xô chưa phân loại)
+      marginVnd: pick(fp.marginVnd, 0),                      // lời mong muốn (đ/kg)
+      domManual: pick(fp.domManual, 0)                       // giá nhân xô nhập tay (0 = tự động theo ngày)
     };
     const hp = raw.hedgeParams || {};
     out.hedgeParams = {};
@@ -192,6 +231,7 @@
     out.riskLimit = pick(raw.riskLimit, base.riskLimit);
     out.priceMoveUsd = pick(raw.priceMoveUsd, base.priceMoveUsd);
     out.grades = normalizeGrades(raw.grades);
+    out.classAlert = normalizeClassAlert(raw.classAlert);
     out.contracts = Array.isArray(raw.contracts) ? raw.contracts.map(normalizeContract) : [];
     // Lần đầu có Sổ hợp đồng: số nhập tay ở 6 dòng hợp đồng chuyển thành "số dư đầu kỳ" trong sổ (không mất số)
     if (!Array.isArray(raw.contracts)) CONTRACT_ROWS.forEach(k => columns.forEach(c => {
@@ -202,7 +242,7 @@
     // Lần đầu có sổ lệnh sàn: số tay ở 2 dòng Robusta sàn → lệnh "đầu kỳ" (giữ nguyên số tấn; Arabica vẫn nhập tay)
     if (!Array.isArray(raw.trades)) Object.entries(TRADE_ROWS).forEach(([acc, k]) => columns.forEach(c => {
       const v = out.matrix[k][c]; if (!v) return;
-      out.trades.push(normalizeTrade({ id: `open_${k}_${c}`, account: acc, side: v > 0 ? 'buy' : 'sell', lots: Math.abs(v) / LOT_TONNES, month: c, price: 0, note: 'Số dư đầu kỳ chuyển từ ma trận' }, out.trades.length));
+      out.trades.push(normalizeTrade({ id: `open_${k}_${c}`, account: '', side: v > 0 ? 'buy' : 'sell', lots: Math.abs(v) / LOT_TONNES, month: c, price: 0, note: 'Số dư đầu kỳ chuyển từ ma trận' }, out.trades.length));
       out.matrix[k][c] = 0;
     }));
     return out;
@@ -257,18 +297,24 @@
     return normalizeContract({ id: `open_${key}_${col}`, no: 'ĐẦU KỲ', party: 'Số dư chuyển từ ma trận', side: v > 0 ? 'buy' : 'sell', qty: Math.abs(v),
       pricing: unfixed ? 'diff' : 'fixed', basis: col, deliveries: shipped ? [{ tons: Math.abs(v) }] : [], note: `Chuyển từ dòng "${row.label}" kỳ ${col}` }, i);
   }
-  function contractState(c) {
+  const todayIso = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  // Lần giao/nhận ghi ngày SAU hôm nay = KẾ HOẠCH (lịch tàu), chưa tính là đã giao – tới ngày đó mới tính. Không ghi ngày = đã giao.
+  function contractState(c, asOf) {
     const qty = num(c.qty);
     const fixTons = sumTons(c.fixes);
     const fixedT = c.pricing === 'fixed' ? qty : Math.min(qty, fixTons);
-    const deliveredT = Math.min(qty, sumTons(c.deliveries));
+    const day = isDate(asOf) ? asOf : todayIso();
+    const dels = c.deliveries || [], plan = dels.filter(d => d.date && d.date > day);
+    const deliveredT = Math.min(qty, sumTons(dels.filter(d => !(d.date && d.date > day))));
+    const plannedT = round2(Math.max(0, Math.min(qty - deliveredT, sumTons(plan))));
+    const nextShip = plan.map(d => d.date).sort()[0] || '';
     const fs = Math.min(fixedT, deliveredT);                       // đã chốt & đã giao → hoàn tất
     const fu = round2(fixedT - fs), us = round2(deliveredT - fs), uu = round2(qty - fixedT - us);
     const avgFix = c.pricing === 'diff' && fixTons > 0 ? round2(c.fixes.reduce((s, f) => s + num(f.tons) * num(f.fut), 0) / fixTons) : null;
     const priceUsd = c.pricing === 'fixed' ? (c.unit === 'usd' ? num(c.price) : null) : (avgFix === null ? null : round2(avgFix + num(c.diff)));
     const fixStatus = fixedT >= qty - 1e-6 ? 'fixed' : fixedT > 0 ? 'partial' : 'open';
     const delStatus = deliveredT >= qty - 1e-6 ? 'done' : deliveredT > 0 ? 'partial' : 'none';
-    return { qty, fixedT: round2(fixedT), unfixedT: round2(qty - fixedT), deliveredT: round2(deliveredT), fs: round2(fs), fu, us, uu, avgFix, priceUsd,
+    return { qty, fixedT: round2(fixedT), unfixedT: round2(qty - fixedT), deliveredT: round2(deliveredT), plannedT, nextShip, fs: round2(fs), fu, us, uu, avgFix, priceUsd,
       fixStatus, delStatus, closed: qty === 0 || (fixStatus === 'fixed' && delStatus === 'done'), lots: round2(qty / LOT_TONNES), containers: round2(qty / CONTAINER_TONNES) };
   }
   // Cộng sổ hợp đồng thành 6 dòng của ma trận. Kỳ tham chiếu đã qua / ngoài 6 kỳ đang hiển thị → ghép vào kỳ gần nhất (không để "mất" rủi ro)
@@ -290,33 +336,38 @@
     return { rows, moved };
   }
   // ---------- Lệnh sàn (hàng ảo) – Robusta London ----------
-  // Mỗi lệnh MUA (+) / BÁN (−) n lot ở một kỳ hạn → dòng "Vị thế Robusta sàn HD Bank / PFS092" của ma trận (1 lot = 10 t).
-  // Lệnh có thể liên kết (link) với một hợp đồng hàng thật để theo dõi hợp đồng nào đã được phòng hộ.
-  const TRADE_ROWS = { hdbank: 'hedge_robusta_hdbank', pfs: 'hedge_robusta_pfs' };
-  const ACCOUNTS = { hdbank: 'HD Bank', pfs: 'PFS092' };
+  // Mỗi lệnh MUA (+) / BÁN (−) n lot ở một kỳ hạn → dòng "Vị thế futures Robusta London" của ma trận (1 lot = 10 t).
+  // Lệnh có thể liên kết (link) với một hợp đồng hàng thật; "account" = tên tài khoản / môi giới ghi tự do (không bắt buộc).
+  // status: 'filled' = đã khớp trên sàn (tính vào vị thế, sổ lệnh, lãi/lỗ) · 'pending' = lệnh chờ / dự kiến, CHƯA khớp (không tính).
+  const TRADE_ROWS = { robusta: 'hedge_robusta' };
   function normalizeTrade(t, i) {
     const x = t && typeof t === 'object' ? t : {};
     const month = String(x.month || '').toUpperCase();
     return {
       id: String(x.id || `t${Date.now().toString(36)}_${i || 0}`).slice(0, 40),
-      date: isDate(x.date) ? x.date : '', account: x.account === 'pfs' ? 'pfs' : 'hdbank', side: x.side === 'sell' ? 'sell' : 'buy',
+      date: isDate(x.date) ? x.date : '', account: /^(hdbank|pfs)$/i.test(String(x.account || '').trim()) ? '' : String(x.account || '').trim().slice(0, 40), side: x.side === 'sell' ? 'sell' : 'buy',
       lots: Math.max(0, round2(num(x.lots))), month: parseCode(month) ? month : '', price: num(x.price),
+      status: x.status === 'pending' ? 'pending' : 'filled',
       link: String(x.link || '').slice(0, 40), note: String(x.note || '').slice(0, 200)
     };
   }
-  const tradeLots = t => (t.side === 'sell' ? -1 : 1) * num(t.lots);
+  const isFilled = t => !t || t.status !== 'pending';
+  const orderLots = t => (t.side === 'sell' ? -1 : 1) * num(t.lots);  // số lot của lệnh, kể cả lệnh chờ
+  const tradeLots = t => (isFilled(t) ? orderLots(t) : 0);            // số lot đang tính vào vị thế
+  // Lệnh chờ (chưa khớp) – tất cả, hoặc của một hợp đồng
+  function pendingLots(trades, contractId) { return round2((trades || []).filter(t => !isFilled(t) && (!contractId || t.link === contractId)).reduce((s, t) => s + orderLots(t), 0)) || 0; }
   function tradeRows(trades, columns) {
     const rows = {}; Object.values(TRADE_ROWS).forEach(k => { rows[k] = {}; columns.forEach(c => { rows[k][c] = 0; }); });
     const moved = [];
     (trades || []).forEach(t => {
-      if (!num(t.lots) || !columns.length) return;
+      if (!num(t.lots) || !columns.length || !isFilled(t)) return;
       let col = t.month;
       if (!columns.includes(col)) {
         const idx = codeIndex(col); const late = idx !== null && idx > codeIndex(columns[columns.length - 1]);
         col = late ? columns[columns.length - 1] : columns[0];
         moved.push({ id: t.id, month: t.month, to: col, expired: !late });
       }
-      const k = TRADE_ROWS[t.account] || TRADE_ROWS.hdbank;
+      const k = TRADE_ROWS.robusta;
       rows[k][col] = round2(rows[k][col] + tradeLots(t) * LOT_TONNES) || 0;
     });
     return { rows, moved };
@@ -444,6 +495,23 @@
     return out;
   }
 
+  // ---------- Tính trừ lùi linh hoạt – gốc là giá nhân xô theo ngày ----------
+  //  Giá hàng tại kho = nhân xô + mức cộng của loại hàng; giá vốn FOB = + chi phí xuất khẩu; giá cần bán = + lời mong muốn
+  //  Diff hòa vốn = giá vốn FOB (USD/t) − giá sàn · Diff cần chào = giá cần bán (USD/t) − giá sàn
+  //  Trừ lùi nội địa = nhân xô (USD/t) − giá sàn · Từ diff chào: nhân xô tối đa được mua = FOB (đ/kg) − chi phí − mức cộng − lời
+  function diffCalc(p) {
+    const L = num(p.london), F = num(p.fx), D = num(p.domestic), M = num(p.markup), C = num(p.cost), G = num(p.margin), X = num(p.diff);
+    if (!L || !F) return null;
+    const toUsd = v => round2(v * 1000 / F);
+    const gradeVnd = D ? D + M : null, breakevenVnd = D ? D + M + C : null, targetVnd = D ? D + M + C + G : null;
+    const fobUsd = round2(L + X), fobVnd = Math.round(fobUsd * F / 1000), maxDomVnd = fobVnd - C - M - G;
+    return { london: L, gradeVnd, breakevenVnd, targetVnd,
+      breakevenUsd: D ? toUsd(breakevenVnd) : null, diffBreakeven: D ? round2(toUsd(breakevenVnd) - L) : null,
+      fobNeedUsd: D ? toUsd(targetVnd) : null, diffNeed: D ? round2(toUsd(targetVnd) - L) : null,
+      domUsd: D ? toUsd(D) : null, domDiff: D ? round2(toUsd(D) - L) : null,
+      fobUsd, fobVnd, maxDomVnd, vsToday: D ? maxDomVnd - D : null };
+  }
+
   // ---------- Giá FOB từ trừ lùi ----------
   function computeFob(londonUsdTon, diffUsd, fxRate, costVndKg) {
     const fobUsd = num(londonUsdTon) + num(diffUsd);
@@ -562,7 +630,7 @@
     parseQuoteName, mxvCode, firstNoticeDay, daysBetween, sessionStatus, HEDGE_DEFAULTS, SCENARIOS, simulateHedge, parseCode, contractLabel, isExpired, nextContracts,
     emptyMatrix, defaultData, sampleData, normalize, rollColumns,
     CONTRACT_ROWS, CONTAINER_TONNES, basisForShipment, normalizeContract, contractState, contractRows, effectiveMatrix, fixDeadline, contractSummary,
-    TRADE_ROWS, ACCOUNTS, normalizeTrade, tradeLots, tradeRows, futuresBook, linkedLots, contractExposure,
-    ICE_CLASSES, DEFAULT_GRADES, gradeInfo, iceClassFor, matchGrade, convertDiff, normalizeGrades,
-    computePositions, analyzeRisk, quotePriceMap, computeSpreads, computeFob };
+    TRADE_ROWS, LEGACY_ROWS, normalizeTrade, tradeLots, orderLots, isFilled, pendingLots, tradeRows, futuresBook, linkedLots, contractExposure, todayIso,
+    ICE_CLASSES, DEFAULT_GRADES, gradeInfo, iceClassFor, matchGrade, convertDiff, normalizeGrades, CLASS_VN, classLadder, normalizeClassAlert, gradeEconomics,
+    computePositions, analyzeRisk, quotePriceMap, computeSpreads, computeFob, diffCalc };
 });

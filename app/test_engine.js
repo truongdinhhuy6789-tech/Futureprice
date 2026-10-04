@@ -23,7 +23,7 @@ t('Phòng hộ khi vượt hạn mức 200 t', () => {
 });
 
 t('Thêm hedge vào sàn làm giảm vị thế ròng', () => {
-  const x = JSON.parse(JSON.stringify(d)); x.matrix.hedge_robusta_hdbank.K27 = 510;
+  const x = JSON.parse(JSON.stringify(d)); x.matrix.hedge_robusta.K27 = 510;
   assert.strictEqual(E.computePositions(x).net[3], -3.82);
 });
 
@@ -145,9 +145,10 @@ t('Lệnh sàn → dòng Robusta sàn của ma trận; liên kết hợp đồng
   const cols = ['X26', 'F27', 'H27', 'K27', 'N27', 'U27'];
   const sale = E.normalizeContract({ id: 'c1', side: 'sell', qty: 38.4, pricing: 'fixed', price: 3800, basis: 'F27' });
   const trades = [E.normalizeTrade({ account: 'hdbank', side: 'buy', lots: 4, month: 'F27', price: 3448, link: 'c1' }),
-    E.normalizeTrade({ account: 'pfs', side: 'sell', lots: 2, month: 'H27', price: 3400 })];
+    E.normalizeTrade({ account: 'MXV – môi giới A', side: 'sell', lots: 2, month: 'H27', price: 3400 })];
+  assert.deepStrictEqual(trades.map(t => t.account), ['', 'MXV – môi giới A']); // tên tài khoản riêng cũ bị bỏ
   const { rows } = E.tradeRows(trades, cols);
-  assert.strictEqual(rows.hedge_robusta_hdbank.F27, 40); assert.strictEqual(rows.hedge_robusta_pfs.H27, -20);
+  assert.strictEqual(rows.hedge_robusta.F27, 40); assert.strictEqual(rows.hedge_robusta.H27, -20);
   assert.strictEqual(E.linkedLots(trades, 'c1'), 4); assert.strictEqual(E.contractExposure(sale), -38.4);
   const p = E.computePositions({ ...E.defaultData(new Date(2026, 9, 3)), contracts: [sale], trades });
   assert.deepStrictEqual(p.futures, [0, 40, -20, 0, 0, 0]); assert.deepStrictEqual(p.net, [0, 1.6, -20, 0, 0, 0]);
@@ -163,13 +164,14 @@ t('Sổ lệnh: giá vốn bình quân, lãi/lỗ đã chốt và đang mở, đ
   assert.deepStrictEqual([b.pos, b.avg, b.realized, b.unrealized], [-2, 3480, 4000, 600]); // đóng 4 lot lãi (3480-3430)×4×10, mở bán 2 lot @3480
 });
 
-t('Lần đầu có sổ lệnh: số tay ở dòng Robusta sàn chuyển thành lệnh đầu kỳ, vị thế không đổi', () => {
-  const raw = E.sampleData(new Date(2026, 9, 3)); raw.matrix.hedge_robusta_hdbank.K27 = 510; raw.matrix.hedge_arabica_pfs.F27 = 17;
-  const before = E.computePositions(raw);
+t('Dữ liệu cũ tách tài khoản (HD Bank/PFS092) → cộng dồn vào dòng futures chuẩn, Robusta thành lệnh đầu kỳ, không mất số', () => {
+  const raw = E.sampleData(new Date(2026, 9, 3)); const before = E.computePositions(raw); // chưa có futures
+  raw.matrix.hedge_robusta_hdbank = { K27: 300 }; raw.matrix.hedge_robusta_pfs = { K27: 210 }; raw.matrix.hedge_arabica_pfs = { F27: 17 };
   const x = E.normalize(raw, new Date(2026, 9, 3));
-  assert.strictEqual(x.trades.length, 1); assert.strictEqual(x.trades[0].lots, 51); assert.strictEqual(x.matrix.hedge_robusta_hdbank.K27, 0);
-  assert.strictEqual(x.matrix.hedge_arabica_pfs.F27, 17); // Arabica vẫn nhập tay
-  assert.deepStrictEqual(E.computePositions(x).net, before.net);
+  assert.strictEqual(x.trades.length, 1); assert.strictEqual(x.trades[0].lots, 51); assert.strictEqual(x.trades[0].account, ''); assert.strictEqual(x.matrix.hedge_robusta.K27, 0);
+  assert.strictEqual(x.matrix.hedge_arabica.F27, 17); // Arabica vẫn nhập tay
+  assert.ok(!('hedge_robusta_hdbank' in x.matrix));
+  assert.deepStrictEqual(E.computePositions(x).net, before.net.map((v, i) => E.round2(v + (i === 1 ? 17 : i === 3 ? 510 : 0))));
 });
 
 // ---------- Chuẩn chất lượng & bảng diff theo chủng loại ----------
@@ -187,6 +189,58 @@ t('Khớp tên hàng với bảng diff (báo giá 27/08/2026, RMU26 3.742)', () 
   g.items.forEach(it => assert.strictEqual(it.fob - g.refPrice, it.diff)); // diff = FOB − giá sàn
   assert.strictEqual(E.convertDiff(435, 3742, 3448), 729); // giữ FOB 4.177, đổi sang kỳ có giá 3.448
   assert.strictEqual(E.normalize({}, new Date(2026, 9, 3)).grades.items.length, 7);
+});
+
+t('Thang giá theo hạng ICE và chênh lệch thị trường (giá sàn 3.448)', () => {
+  const L = E.classLadder(3448, E.normalizeGrades(E.DEFAULT_GRADES));
+  const by = Object.fromEntries(L.map(x => [x.cls, x]));
+  assert.deepStrictEqual(L.map(x => x.exchange), [3478, 3448, 3418, 3388, 3358]);
+  assert.deepStrictEqual([by['1'].diffLo, by['1'].diffHi, by['1'].fobLo, by['1'].fobHi], [262, 435, 3710, 3883]);
+  assert.deepStrictEqual([by['2'].diffLo, by['2'].fobLo, by['2'].premiumLo], [166, 3614, 196]); // R2 S13: FOB cao hơn giá giao sàn Class 2 là 196
+  assert.strictEqual(by['3'].fobLo, null);
+  assert.deepStrictEqual(E.normalizeClassAlert({ month: 'f27', above: '3600', below: -5 }), { month: 'F27', above: 3600, below: 0 });
+});
+
+t('Mức cộng nội địa theo loại (nhân xô +2.000/+4.000/+6.000/+8.000) và biên FOB', () => {
+  const g = E.normalizeGrades({ items: [{ grade: 'Robusta S18 Wet Polished', diff: 435 }, { grade: 'Loại mới', diff: 100 }] }); // dữ liệu cũ chưa có "dom"
+  assert.deepStrictEqual(g.items.map(i => i.dom), [8000, 0]);
+  assert.deepStrictEqual(E.normalizeGrades(E.DEFAULT_GRADES).items.map(i => i.dom), [2000, 4000, 4000, 6000, 6000, 8000, 8000]);
+  const ec = E.gradeEconomics({ diff: 435, dom: 8000 }, 3448, 25790, 94000);
+  assert.deepStrictEqual([ec.fobUsd, ec.fobVnd, ec.costVnd, ec.marginVnd], [3883, 100143, 102000, -1857]); // 3.883 × 25.790 ÷ 1000 = 100.142,6
+  assert.strictEqual(ec.costUsd, 3955.02); assert.strictEqual(ec.marginUsd, -72.02);
+  const s13 = E.gradeEconomics({ diff: 166, dom: 2000 }, 3448, 25790, 94000);
+  assert.deepStrictEqual([s13.costVnd, s13.marginVnd], [96000, -2795]); // FOB 3.614 × 25.790 ÷ 1000 = 93.205
+});
+
+t('Tính trừ lùi linh hoạt từ giá nhân xô (WP: nhân xô 94.000 + 8.000, chi phí 700, lời 500, RMK27 3.412, tỷ giá 25.790)', () => {
+  const r = E.diffCalc({ london: 3412, fx: 25790, domestic: 94000, markup: 8000, cost: 700, margin: 500, diff: 435 });
+  assert.deepStrictEqual([r.gradeVnd, r.breakevenVnd, r.targetVnd], [102000, 102700, 103200]);
+  assert.deepStrictEqual([r.breakevenUsd, r.diffBreakeven], [3982.16, 570.16]);   // 102.700.000 ÷ 25.790
+  assert.deepStrictEqual([r.fobNeedUsd, r.diffNeed], [4001.55, 589.55]);          // diff cần chào để lời 500 đ/kg
+  assert.deepStrictEqual([r.domUsd, r.domDiff], [3644.82, 232.82]);               // nhân xô đang cao hơn giá sàn 232,82 USD/t
+  assert.deepStrictEqual([r.fobUsd, r.fobVnd, r.maxDomVnd, r.vsToday], [3847, 99214, 90014, -3986]); // 3.847 × 25.790 = 99.214.130 → nhân xô tối đa 90.014
+  assert.strictEqual(E.diffCalc({ london: 0, fx: 25790 }), null);
+  const d = E.normalize({ fobParams: { grade: 'Robusta S18 Wet Polished', marginVnd: '500' } }, new Date(2026, 9, 3)).fobParams;
+  assert.deepStrictEqual([d.grade, d.marginVnd, d.domManual], ['Robusta S18 Wet Polished', 500, 0]);
+});
+
+t('Lịch giao ngày tương lai = kế hoạch; lệnh chờ chưa khớp không tính vào vị thế (bán 38,4 t giá chốt 3.800, chưa mua sàn → SHORT −38,4)', () => {
+  const c = E.normalizeContract({ id: 'hb', no: 'HĐB-2026-001', side: 'sell', qty: 38.4, pricing: 'fixed', price: 3800, basis: 'F27', ship: '2026-12',
+    deliveries: [{ date: '2026-12-15', tons: 19.2 }, { date: '2026-12-15', tons: 19.2 }] });
+  const s = E.contractState(c, '2026-10-04');
+  assert.deepStrictEqual([s.deliveredT, s.plannedT, s.nextShip, s.closed, s.fu, s.delStatus], [0, 38.4, '2026-12-15', false, 38.4, 'none']);
+  const s2 = E.contractState(c, '2026-12-15'); // tới ngày tàu chạy mới tính là đã giao
+  assert.deepStrictEqual([s2.deliveredT, s2.plannedT, s2.closed], [38.4, 0, true]);
+  const tr = E.normalizeTrade({ id: 'tp', side: 'buy', lots: 4, month: 'F27', price: 3448, link: 'hb', status: 'pending' });
+  assert.strictEqual(tr.status, 'pending'); assert.strictEqual(E.normalizeTrade({ lots: 1 }).status, 'filled');
+  assert.deepStrictEqual([E.tradeLots(tr), E.orderLots(tr), E.linkedLots([tr], 'hb'), E.pendingLots([tr], 'hb')], [0, 4, 0, 4]);
+  assert.strictEqual(E.futuresBook([tr], () => 3500).list.length, 0);
+  const far = E.normalizeContract({ ...c, deliveries: [{ date: '2099-12-15', tons: 38.4 }] }); // luôn là ngày tương lai, không phụ thuộc ngày chạy
+  const data = E.normalize({ contracts: [far], trades: [tr] }, new Date(2026, 9, 4));
+  const pos = E.computePositions(data);
+  assert.deepStrictEqual([pos.totals.physical, pos.totals.futures, pos.totals.net], [-38.4, 0, -38.4]);
+  const filled = E.computePositions({ ...data, trades: [{ ...tr, status: 'filled' }] }); // khi lệnh khớp thật: +40 t sàn → ròng +1,6
+  assert.deepStrictEqual([filled.totals.futures, filled.totals.net], [40, 1.6]);
 });
 
 console.log(`\nĐạt ${n}/${n} kiểm thử.`);

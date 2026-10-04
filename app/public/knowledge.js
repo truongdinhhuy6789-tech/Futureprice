@@ -78,7 +78,8 @@ window.VTKnowledge = {
       body: `<ul><li>Nhân xô là cà phê nhân chưa sàng, chưa phân loại (thường độ ẩm, tạp chất, đen vỡ cao hơn hàng xuất khẩu).</li>
         <li>Giá nhân xô bám giá London (quy đổi đ/kg) trừ đi chi phí chế biến – xuất khẩu, cộng/trừ theo tình hình nguồn hàng địa phương.</li>
         <li>Doanh nghiệp xuất khẩu mua nhân xô → sàng, phân loại, đánh bóng → bán R1/R2 FOB. Phần chênh <b>FOB (đ/kg) − nhân xô</b> phải đủ trả chi phí chế biến, <b>tỷ lệ thu hồi</b> (ví dụ S18 chỉ là một phần của lô nhân xô) và lời.</li>
-        <li>Hệ thống lấy tự động giá trung bình Tây Nguyên và giá các tỉnh giacaphe.com công bố công khai (thẻ 🌐 Bảng giá).</li></ul>` },
+        <li><b>Mức cộng từ nhân xô ra hàng thành phẩm</b> (giá tham chiếu công ty): S13 5% <b>+2.000</b> · S16/S18 2% <b>+4.000</b> · Clean G1 <b>+6.000</b> · Đánh bóng S16/S18 <b>+8.000 đ/kg</b>. Sửa được trong bảng 💎 Giá FOB theo chủng loại.</li>
+        <li>Hệ thống lấy tự động giá trung bình Tây Nguyên và giá các tỉnh giacaphe.com công bố công khai (thẻ 🌐 Bảng giá), lưu theo ngày để tính trừ lùi.</li></ul>` },
     { id: 'ty-gia', cat: 'gia', title: 'Tỷ giá ảnh hưởng thế nào?', tags: 'ty gia usd vnd brl real vietcombank',
       sum: 'Bán bằng USD, mua bằng VNĐ: tỷ giá tác động trực tiếp tới giá nội địa và biên lời.',
       body: `<ul><li>USD tăng giá so với VNĐ → cùng giá USD/tấn, giá quy đổi đ/kg cao hơn (lợi cho người bán USD, giá nội địa có xu hướng tăng theo).</li>
@@ -109,6 +110,18 @@ window.VTKnowledge = {
         <ul><li>Quy cách cụ thể luôn theo <b>hợp đồng và mẫu duyệt</b> của khách (và TCVN 4193 cho hàng trong nước) – bảng trên dùng để định vị nhanh.</li>
         <li>Mức cộng/trừ của sàn chỉ là mốc so chất lượng; giá FOB thực tế theo <b>diff thị trường</b> của từng loại (xem bài Diff).</li>
         <li>Trên hệ thống: cột "Hạng ICE" ở bảng giá FOB theo chủng loại và dòng 📏 khi ghi hợp đồng tự nhận diện hạng theo tên hàng.</li></ul>` },
+    { id: 'san-vs-hang-that', cat: 'chatluong', title: 'Hàng giao dịch trên sàn London là loại nào? So với hàng thật Việt Nam', tags: 'san london class 1 hang that physical viet nam so sanh loai nao chat luong chuan',
+      sum: 'Giá sàn London là giá hàng Class 1 (lỗi ≤ 3%, tạp chất ≤ 0,5%, ≥ 90% trên sàng 14) – nằm giữa R1 và R2 của Việt Nam.',
+      body: `<table><tr><th>Hàng Việt Nam</th><th>Tương đương sàn</th></tr>
+        <tr><td><b>R1 S16/S18</b> (đen vỡ ≤ 2%, tạp chất ≤ 0,5%)</td><td><b>Class 1</b> – ngang giá sàn (cỡ hạt còn lớn hơn mức sàn yêu cầu là sàng 14)</td></tr>
+        <tr><td>R1 Clean / Wet Polished</td><td>Vẫn Class 1; chỉ lên Class P (+30) nếu lỗi ≤ 0,5% và tạp chất ≤ 0,2%</td></tr>
+        <tr><td><b>R2 S13</b> (đen vỡ 5%, tạp chất 1%)</td><td><b>Class 2</b> – trừ 30 USD/t</td></tr>
+        <tr><td>Đen vỡ 5–7,5% (R3)</td><td>Class 3 – trừ 60 USD/t</td></tr>
+        <tr><td>Đen vỡ trên 8%</td><td>Không giao được lên sàn</td></tr></table>
+        <ul><li>Mức +30/−30/−60/−90 của sàn <b>chỉ áp dụng khi giao hàng lên sàn</b> – dùng để so chất lượng, không dùng để định giá.</li>
+        <li>Giá FOB thực tế = <b>giá sàn + diff thị trường</b> của từng loại. Ví dụ bảng báo giá 27/08/2026 (so với RMU26): R2 S13 5% <b>+166</b> (vẫn cao hơn giá sàn dù theo sàn bị trừ 30), S18 Wet Polished <b>+435</b>. Phần "hàng thật hơn giá sàn của hạng" chính là <b>basis</b>.</li>
+        <li><b>Mức cộng nội địa theo loại</b> (giá hàng thành phẩm = nhân xô + mức cộng): S13 5% <b>+2.000</b> · S16/S18 2% <b>+4.000</b> · Clean G1 <b>+6.000</b> · Đánh bóng S16/S18 <b>+8.000 đ/kg</b>.</li>
+        <li>Trên hệ thống: thẻ 🌐 Bảng giá → <b>📏 Theo dõi giá chuẩn Class 1</b> (giá theo hạng, hàng VN tương đương, FOB thị trường, báo động khi giá vượt mức) và bảng 💎 Giá FOB theo chủng loại (giá vốn nội địa, biên lời).</li></ul>` },
     { id: 'quy-cach', cat: 'chatluong', title: 'Đọc quy cách: S13/S16/S18, WP, Clean, đen vỡ, tạp chất, độ ẩm', tags: 'quy cach sang s13 s16 s18 wp wet polished danh bong clean den vo bb tap chat fm do am',
       sum: 'Sàng = cỡ lỗ tính theo 1/64 inch; WP = đánh bóng ướt; Clean = làm sạch; BB = đen vỡ; FM = tạp chất.',
       body: `<ul><li><b>Sàng (screen):</b> số đo lỗ sàng theo 1/64 inch – S13 ≈ 5,2 mm, S16 ≈ 6,4 mm, S18 ≈ 7,1 mm. "≥ 90% trên sàng 18" = 90% khối lượng hạt không lọt sàng 18.</li>
@@ -162,6 +175,16 @@ window.VTKnowledge = {
           <li><b>Trừ lùi RMF27 +352</b> (nên đòi gần +435): khóa diff, chốt giá sàn sau – ghi hạn chốt (trước ~28/12/2026), chốt theo lot, phần lẻ 0,84 lot.</li></ul></li>
         <li><b>Hợp đồng ghi rõ:</b> R1 S18 WP (ẩm ≤ 12,5%, đen vỡ ≤ 2%, tạp chất theo mẫu, ≥ 90% trên sàng 18), 320 bao 60 kg/cont, tháng giao, FOB TP.HCM, thanh toán, giám định cuối cùng tại cảng xếp.</li>
         <li><b>Ghi vào hệ thống:</b> 📒 Giao dịch → ➕ Hợp đồng mới (tự so bảng diff, tự báo hạn chốt) → 🛡️ Hedge để ghi lệnh sàn liên kết.</li></ol>` },
+    { id: 'cong-thuc-tru-lui', cat: 'hopdong', title: 'Công thức tính trừ lùi từ giá nhân xô theo ngày', tags: 'cong thuc tinh tru lui cong lui nhan xo theo ngay diff hoa von chao gia muc cong',
+      sum: 'Lấy giá nhân xô hôm nay làm gốc → cộng mức của loại hàng, chi phí, lời → ra diff hòa vốn và diff cần chào so với giá sàn.',
+      body: `<ol><li><b>Giá hàng tại kho</b> = nhân xô hôm nay + mức cộng của loại (S13 5% +2.000 · S16/18 2% +4.000 · Clean G1 +6.000 · Đánh bóng +8.000 đ/kg).</li>
+        <li><b>Giá vốn FOB</b> = giá hàng tại kho + chi phí xuất khẩu (bao bì, vận chuyển ra cảng, thủ tục). Đổi sang USD/t = đ/kg × 1000 ÷ tỷ giá.</li>
+        <li><b>Diff hòa vốn</b> = giá vốn FOB (USD/t) − giá sàn kỳ tham chiếu.</li>
+        <li><b>Diff cần chào</b> = (giá vốn FOB + lời mong muốn) (USD/t) − giá sàn.</li>
+        <li><b>Trừ lùi nội địa</b> = nhân xô (USD/t) − giá sàn: dương nghĩa là giá trong nước đang cao hơn giá sàn quy đổi.</li>
+        <li>Chiều ngược lại – có diff khách trả: <b>FOB = giá sàn + diff</b>; <b>nhân xô tối đa được mua</b> = FOB (đ/kg) − chi phí − mức cộng − lời.</li></ol>
+        <p><b>Ví dụ</b> (nhân xô 94.000, tỷ giá 25.790, RMK27 3.412, chi phí 700, lời 500, hàng đánh bóng +8.000): giá vốn FOB 102.700 đ/kg = 3.982 USD/t → diff hòa vốn <b>+570</b>; diff cần chào <b>+590</b>. Bảng diff công ty chỉ +435 → chưa đủ hòa vốn; với diff +435, nhân xô tối đa được mua ≈ 90.014 đ/kg (thấp hơn giá hôm nay ~4.000).</p>
+        <p>Trên hệ thống: thẻ 📊 Vị thế → <b>🧮 Tính giá trừ lùi – linh hoạt</b> (tự lấy nhân xô theo ngày, chọn loại hàng, bảng theo ngày).</p>` },
     { id: 'roll', cat: 'hopdong', title: 'Đảo kỳ hạn (roll) cho lệnh sàn và hợp đồng chưa chốt', tags: 'dao ky roll gia han fnd chuyen ky spread',
       sum: 'Trước ngày thông báo đầu tiên: đóng lệnh kỳ gần, mở kỳ xa – chi phí bằng spread.',
       body: `<ul><li>Lệnh phòng hộ ở kỳ sắp tới hạn phải <b>đóng trước ngày thông báo đầu tiên</b> và mở lại ở kỳ sau nếu vẫn cần phòng hộ.</li>
@@ -219,7 +242,7 @@ window.VTKnowledge = {
       body: `<ul><li>Mở tài khoản giao dịch qua một thành viên kinh doanh của MXV (môi giới), nộp ký quỹ, đặt lệnh liên thông sang ICE.</li>
         <li>Mã trên MXV: <b>LRC</b> = Robusta London, <b>KCE</b> = Arabica New York (ví dụ LRCF27).</li>
         <li>Hỏi rõ: phí giao dịch mỗi lot, mức ký quỹ, cách gọi ký quỹ, giờ đặt lệnh, báo cáo hằng ngày.</li>
-        <li>Trên hệ thống: hai tài khoản đang theo dõi là HD Bank và PFS092 (phần 📉 Hàng ảo).</li></ul>` },
+        <li>Trên hệ thống: ghi từng lệnh ở phần 📉 Hàng ảo (thẻ Giao dịch); ô "Tài khoản / môi giới" ghi tự do nếu công ty có nhiều tài khoản.</li></ul>` },
 
     // ===================== QUẢN TRỊ VỊ THẾ =====================
     { id: 'vi-the-rong', cat: 'vithe', title: 'Vị thế ròng (net position) đọc thế nào?', tags: 'vi the rong net position long short square tong vi the',
@@ -238,7 +261,7 @@ window.VTKnowledge = {
     { id: 'hang-that-ao', cat: 'vithe', title: 'Hàng thật và hàng ảo: quản lý và liên kết trên hệ thống', tags: 'hang that hang ao so hop dong lenh san lien ket con ho giao dich',
       sum: 'Hàng thật = hợp đồng mua/bán; hàng ảo = lệnh sàn. Liên kết hai bên để biết hợp đồng nào đã được bảo hiểm.',
       body: `<ul><li><b>📒 Hàng thật</b>: mỗi hợp đồng ghi loại hàng, số tấn, giá cố định/trừ lùi, kỳ tham chiếu, tháng giao; chốt giá và giao hàng từng phần → tự đổ vào 6 dòng hợp đồng của ma trận.</li>
-        <li><b>📉 Hàng ảo</b>: mỗi lệnh MUA/BÁN lot ở kỳ hạn, tài khoản HD Bank/PFS092 → tự đổ vào dòng Robusta sàn.</li>
+        <li><b>📉 Hàng ảo</b>: mỗi lệnh MUA/BÁN lot ở kỳ hạn (ghi tên tài khoản/môi giới nếu cần) → tự đổ vào dòng "Vị thế futures Robusta London".</li>
         <li><b>Liên kết</b>: lệnh sàn gắn với hợp đồng → hợp đồng hiện "🔗 hàng ảo +4 lot → còn hở +1,6 t".</li>
         <li>Thứ tự làm việc: ghi hợp đồng ngay khi ký → 🛡️ Hedge nếu cần → 🔒 Chốt giá khi chốt → 🚚 Giao khi xuất hàng → cập nhật tồn kho.</li></ul>` },
     { id: 'quy-trinh', cat: 'vithe', title: 'Quy trình hằng ngày – tuần – quý', tags: 'quy trinh hang ngay hang tuan dinh ky review ra soat',

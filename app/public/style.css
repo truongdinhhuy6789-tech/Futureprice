@@ -1471,3 +1471,45 @@ body.viewer .gr-edit-btn { display: none; }
 .lk-copy:hover { color: var(--text-primary); border-color: rgba(56, 189, 248, 0.5); }
 
 .lk-direct { color: var(--text-muted) !important; font-size: 11px; margin-left: 4px; }
+
+/* Theo dõi giá chuẩn Class 1 */
+.cls-top { display: grid; grid-template-columns: 1.1fr 1.4fr 1.2fr; gap: 10px; margin: 4px 0 10px; }
+.cls-top > div { background: #0F172A; border: 1px solid var(--border-color); border-radius: 10px; padding: 10px 12px; font-size: 12.5px; line-height: 1.6; color: var(--text-secondary); }
+.cls-main .k, .cls-alert .k { font-size: 11.5px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; }
+.cls-main select { width: auto; padding: 3px 6px; font-size: 12px; }
+.cls-main .v { font-family: var(--font-mono); font-size: 26px; font-weight: 800; color: var(--text-primary); margin: 2px 0; }
+.cls-main .v small { font-size: 12px; color: var(--text-muted); }
+.cls-main .s.up { color: var(--green); } .cls-main .s.down { color: var(--red); }
+.cls-side b { color: var(--text-primary); } .cls-side .up { color: var(--green); } .cls-side .down { color: var(--red); } .cls-side .muted { color: var(--text-muted); }
+.cls-alert label { display: inline-flex; align-items: center; gap: 4px; margin: 6px 6px 0 0; }
+.cls-alert input { width: 92px; padding: 4px 6px; font-family: var(--font-mono); }
+.cls-hit { color: #FDA4AF; font-weight: 700; } .cls-watch { color: #6EE7B7; }
+.cls-table tr.cls1 td { background: rgba(251, 191, 36, 0.06); }
+@media (max-width: 900px) { .cls-top { grid-template-columns: 1fr; } }
+
+/* Công cụ tính trừ lùi linh hoạt */
+.calc-results { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+.calc-block { background: #0B1324; border: 1px solid var(--border-color); border-radius: 10px; padding: 10px 12px; }
+.calc-block h4 { font-size: 12.5px; color: #93C5FD; margin-bottom: 6px; }
+.calc-block h4 small { color: var(--text-muted); font-weight: 500; }
+.calc-line { font-size: 12.5px; color: var(--text-secondary); line-height: 1.7; }
+.calc-line b, .calc-big b { color: var(--text-primary); }
+.calc-big { font-size: 13.5px; color: var(--text-primary); margin: 6px 0; padding: 6px 10px; border-radius: 8px; background: rgba(251, 191, 36, 0.07); border: 1px dashed rgba(251, 191, 36, 0.35); }
+.calc-big b { font-family: var(--font-mono); font-size: 17px; }
+.calc-big small { color: var(--text-muted); font-size: 11.5px; }
+.calc-results b.up, .calc-daily td.up { color: var(--green); } .calc-results b.down, .calc-daily td.down { color: var(--red); }
+.calc-empty { font-size: 12.5px; color: var(--text-muted); }
+.calc-formula { margin-top: 8px; font-size: 12px; color: var(--text-secondary); }
+.calc-formula summary { cursor: pointer; color: #93C5FD; font-weight: 700; }
+.calc-formula ul { padding-left: 18px; margin-top: 6px; display: flex; flex-direction: column; gap: 4px; }
+.calc-hint { color: var(--text-muted); font-weight: 400; font-size: 11px; }
+.calc-day-table { margin-top: 6px; }
+
+/* Lệnh chờ (chưa khớp) & kế hoạch giao */
+.ct-badge.pending { background: var(--yellow-bg); color: #FCD34D; margin-left: 0; }
+.ct-table tr.pending td { background: rgba(251, 191, 36, 0.04); }
+.ct-table tr.pending td .cv b { color: var(--text-secondary); }
+.ct-plan > div { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ledger-row td.ledger-cell:hover { background: rgba(56, 189, 248, 0.14); outline: 1px dashed rgba(56, 189, 248, 0.6); outline-offset: -3px; }
+.cell-list td { padding: 8px 6px; vertical-align: middle; font-size: 12.5px; }
+.cell-list td small { display: block; color: var(--text-muted); font-size: 11px; }
