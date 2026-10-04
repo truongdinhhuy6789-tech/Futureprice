@@ -1621,3 +1621,56 @@ body.viewer .gr-edit-btn { display: none; }
   .card-badge { white-space: nowrap; }
   .card-header { flex-wrap: wrap; }
 }
+
+/* ===================== CHỐNG PHÓNG TO KHI CHẠM 2 LẦN (điện thoại) ===================== */
+/* manipulation = vẫn cuộn và phóng to bằng 2 ngón, nhưng chạm 2 lần KHÔNG phóng to, bấm nút không bị trễ */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+html, body, *, *::before, *::after { touch-action: manipulation; }
+button, a, .tab-btn, .ledger-cell, .lib-card, .lib-cat, .as-chip, summary { -webkit-tap-highlight-color: rgba(56, 189, 248, 0.15); user-select: none; -webkit-user-select: none; }
+@media (max-width: 768px) {
+  /* Ô nhập chữ ≥ 16px: iPhone không tự phóng to khi bấm vào ô */
+  input:not([type="checkbox"]):not([type="radio"]), select, textarea, .form-control, .cell-input, .as-input textarea { font-size: 16px; }
+}
+
+/* ===================== ĐIỆN THOẠI v3 – dễ hiểu, dễ dùng, dễ nhìn ===================== */
+.period-cards { display: none; }
+.hs-hint { display: none; }
+#positionHead th.col-flash { box-shadow: inset 0 -3px 0 var(--gold); background: rgba(251, 191, 36, 0.12); transition: background 0.3s; }
+@media (max-width: 768px) {
+  /* Chữ to và sáng hơn để đọc ngoài trời */
+  :root { --text-muted: #8391A7; }
+  body { font-size: 14px; }
+  .section-desc { font-size: 13px; line-height: 1.55; }
+  .tab-btn { font-size: 11.5px; }
+
+  /* Thanh nút công cụ: 2 cột đều nhau, nút Lưu nổi bật trên cùng; ẩn "Dữ liệu mẫu" (dễ bấm nhầm làm thay số liệu) */
+  .panel-toolbar { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .panel-toolbar .btn { width: 100%; justify-content: center; }
+  .panel-toolbar .btn-save { grid-column: 1 / -1; order: -1; min-height: 48px; font-size: 15px; }
+  #btnResetSample { display: none; }
+  .ct-toolbar .ct-search { grid-column: 1 / -1; }
+  .ct-toolbar .btn-primary { min-height: 44px; }
+
+  /* Tóm tắt vị thế ròng theo kỳ, trên ma trận */
+  .period-cards { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x proximity; margin: 4px -14px 12px; padding: 0 14px 4px; scrollbar-width: none; }
+  .period-cards::-webkit-scrollbar { display: none; }
+  .pc { flex: 0 0 auto; min-width: 128px; scroll-snap-align: start; display: flex; flex-direction: column; gap: 2px; text-align: left; padding: 9px 11px; border-radius: 10px;
+    background: #0F172A; border: 1px solid var(--border-color); border-top: 3px solid var(--border-color); color: var(--text-secondary); font-family: var(--font-sans); cursor: pointer; }
+  .pc-k { font-size: 12px; font-weight: 700; color: var(--text-primary); } .pc-k small { color: var(--text-muted); font-family: var(--font-mono); font-weight: 600; margin-left: 2px; }
+  .pc-v { font-family: var(--font-mono); font-size: 19px; color: var(--text-primary); } .pc-v small { font-size: 11px; color: var(--text-muted); }
+  .pc-s { font-size: 11.5px; font-weight: 700; }
+  .pc-d { font-size: 10.5px; color: var(--text-muted); white-space: nowrap; }
+  .pc.neg { border-top-color: var(--red); } .pc.neg .pc-v, .pc.neg .pc-s { color: #F87171; }
+  .pc.pos { border-top-color: var(--green); } .pc.pos .pc-v, .pc.pos .pc-s { color: #4ADE80; }
+  .pc.zero { opacity: 0.7; } .pc.zero .pc-s { color: var(--text-muted); }
+
+  /* Nhắc vuốt ngang cho bảng rộng */
+  .hs-hint { display: block; font-size: 12px; color: var(--gold); margin: 2px 0 6px; animation: hsNudge 1.6s ease-in-out 2; }
+  .hs-hint[hidden], .hs-hint.seen { display: none; }
+  @keyframes hsNudge { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(6px); } }
+
+  /* Bảng 4 chiến lược & kịch bản phòng hộ: cột đủ rộng để đọc, cột tiêu chí dính bên trái */
+  #hedgeCompare { min-width: 720px; }
+  #hedgeScenarios { min-width: 640px; }
+  #hedgeCompare th:first-child, #hedgeCompare td:first-child, #hedgeScenarios th:first-child, #hedgeScenarios td:first-child { position: sticky; left: 0; z-index: 1; background: #111B2E; min-width: 128px; max-width: 150px; white-space: normal; }
+}

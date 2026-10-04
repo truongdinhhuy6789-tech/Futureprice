@@ -3,7 +3,7 @@
 // cat phải là một trong các nhóm ở "cats". body là HTML đơn giản (<p>, <ul><li>, <b>, <table>).
 window.VTKnowledge = {
   cats: [
-    ['gia', '💲 Giá & quy đổi'], ['chatluong', '📏 Chất lượng'], ['hopdong', '📝 Hợp đồng & chốt giá'], ['phongho', '🛡️ Phòng hộ & sàn'],
+    ['gia', '💲 Giá & quy đổi'], ['chatluong', '📏 Chất lượng'], ['hopdong', '📝 Hợp đồng & chốt giá'], ['phongho', '🛡️ Phòng hộ & sàn'], ['tinhhuong', '🎬 Tình huống futures'],
     ['vithe', '⚖️ Quản trị vị thế'], ['thitruong', '🌦️ Phân tích thị trường'], ['tuvan', '🎯 Tư vấn & nguyên tắc'], ['thuatngu', '📖 Thuật ngữ'], ['huongdan', '📘 Hướng dẫn sử dụng']
   ],
   articles: [
@@ -386,6 +386,167 @@ window.VTKnowledge = {
         <tr><td><b>Spread</b></td><td>Chênh lệch giữa hai kỳ hạn</td></tr>
         <tr><td><b>Washout</b></td><td>Hai bên thỏa thuận hủy hợp đồng, thanh toán phần chênh lệch giá</td></tr>
         <tr><td><b>WP (Wet Polished)</b></td><td>Đánh bóng ướt</td></tr></table>` },
+
+    // ===================== TÌNH HUỐNG GIAO DỊCH FUTURES (số minh họa theo giá RMF27 3.448 · RMH27 3.424 · RMK27 3.412 · tỷ giá 25.790) =====================
+    { id: 'th-ban-chot-chua-hang', cat: 'tinhhuong', title: 'Bán giá chốt mà chưa có hàng: phòng hộ từ lúc ký tới lúc giao', tags: 'tinh huong ban gia chot outright chua co hang short mua lot phong ho 38.4 tan giao xa',
+      sum: 'Bán 38,4 t giá chốt 3.800 FOB khi chưa mua hàng = đang thiếu hàng 38,4 t: MUA 4 lot ngay, mua hàng tới đâu bán lại lot tới đó.',
+      body: `<p><b>Tình huống:</b> bán 38,4 t R1 S18 WP giá cố định 3.800 USD/t FOB, giao 12/2026, kỳ tham chiếu RMF27 (≈ 3.448 lúc ký). Chưa mua hàng, chưa mua sàn → vị thế <b>−38,4 t</b>.</p>
+        <p><b>Tính nhanh:</b></p><ul><li>London +100 USD/t → lỗ ≈ 3.840 USD (≈ 99 triệu đ) vì phải mua hàng đắt hơn.</li>
+        <li>Phòng hộ: MUA 38,4 ÷ 10 = 3,84 → <b>4 lot RMF27</b> (dư 1,6 t). Diff ngầm định khóa được ≈ 3.800 − 3.448 = <b>+352</b>.</li>
+        <li>London +250: lệnh sàn lời 250 × 40 = 10.000 USD, hàng đắt thêm 250 × 38,4 = 9.600 USD → ròng <b>+400</b> (phần 1,6 t dư). London −250: ngược lại, ròng −400.</li></ul>
+        <p><b>Xử lý theo thời gian:</b></p><ol><li>Ngay ngày ký: đặt MUA 4 lot RMF27 (lệnh giới hạn sát giá) → khớp thì ghi ✔ Khớp.</li>
+        <li>Mua hàng nội địa dần: mỗi lần mua giá cố định 19,2 t (1 container) → <b>BÁN lại 2 lot</b> vì đã có hàng, không còn thiếu.</li>
+        <li>Đủ 38,4 t → lệnh sàn về 0 lot (lot lẻ còn lại thì đóng nốt).</li>
+        <li>Trước ngày thông báo đầu tiên RMF27 (≈ 28/12/2026) không còn lot F27 mở; giao trễ thì đảo kỳ.</li></ol>
+        <p><b>Lưu ý:</b> phòng hộ khóa giá London, <b>không khóa chênh lệch nội địa</b>: nhân xô 94.000 + 8.000 (đánh bóng) = 102.000 đ/kg, trong khi 3.800 FOB ≈ 98.000 đ/kg → phải tìm nguồn hàng/khóa giá mua sớm.</p>
+        <p><b>Trên hệ thống:</b> 📒 Giao dịch → 🛡️ Hedge (ghi lệnh chờ) → ✔ Khớp khi khớp thật; ghi hợp đồng MUA khi mua hàng; xem "còn hở" trên dòng hợp đồng. Xem thêm bài phân tích ký hợp đồng 38,4 t.</p>` },
+    { id: 'th-mua-chot-chua-ban', cat: 'tinhhuong', title: 'Thu mua giá cố định nhưng chưa có người mua', tags: 'tinh huong mua hang gia co dinh ton kho chua ban long ban lot phong ho thu mua',
+      sum: 'Mua 100 t nhân xô giá cố định khi chưa có hợp đồng bán = đang dư hàng 100 t: BÁN 10 lot, ký bán tới đâu MUA lại lot tới đó.',
+      body: `<p><b>Tình huống:</b> thu mua 100 t nhân xô giá 94.000 đ/kg (≈ 3.645 USD/t theo tỷ giá 25.790), chưa có hợp đồng bán → vị thế <b>+100 t</b>.</p>
+        <p><b>Tính nhanh:</b> London −100 USD/t → hàng mất ≈ 10.000 USD (≈ 258 triệu đ). Phòng hộ: <b>BÁN 10 lot</b> ở kỳ dự kiến bán hàng (vd RMH27 nếu định bán tháng 1–2). London −300: lệnh sàn lời 30.000 USD, hàng mất ≈ 30.000 USD → ròng ≈ 0 (chỉ còn phần basis).</p>
+        <p><b>Xử lý:</b></p><ol><li>Chốt giá mua với nông dân/đại lý xong → bán số lot tương ứng ngay trong phiên.</li>
+        <li>Ký hợp đồng bán <b>giá cố định</b> → MUA lại số lot tương ứng ngay. Ký bán <b>trừ lùi</b> → giữ lệnh, đóng khi khách chốt giá (xem bài EFP).</li>
+        <li>Mỗi tuần đối chiếu tồn kho thực tế với số lot đang bán.</li></ol>
+        <p><b>Lưu ý:</b> chọn kỳ gần thời điểm bán hàng; kỳ quá xa thì spread làm lệch kết quả.</p>
+        <p><b>Trên hệ thống:</b> nhập dòng Tồn kho ở ma trận + ghi lệnh BÁN 10 lot → vị thế ròng về gần 0.</p>` },
+    { id: 'th-goi-ky-quy', cat: 'tinhhuong', title: 'Giá chạy ngược, bị gọi ký quỹ 30.000 USD', tags: 'tinh huong goi ky quy margin call nop tien gia tang lenh ban dong lenh thanh khoan quy du phong',
+      sum: 'Bán 10 lot phòng hộ, London tăng 300 → phải nộp 30.000 USD trong 1 ngày. Không đóng phòng hộ chỉ vì thiếu tiền – lo nguồn tiền trước.',
+      body: `<p><b>Tình huống:</b> đang BÁN 10 lot RMH27 @3.400 để phòng hộ 100 t tồn kho. London tăng lên 3.700 (+300).</p>
+        <p><b>Tính nhanh:</b> tiền phải nộp thêm = 300 × 10 t × 10 lot = <b>30.000 USD ≈ 774 triệu đ</b>, thường trong 1 ngày làm việc. Hàng tồn cũng lên giá tương ứng nhưng chỉ là lời "trên giấy" tới khi bán.</p>
+        <p><b>Xử lý:</b></p><ol><li><b>Không đóng lệnh phòng hộ chỉ vì bị gọi ký quỹ</b> – đóng là chốt lỗ thật trong khi hàng chưa bán, và mất bảo hiểm đúng lúc giá đang chạy.</li>
+        <li>Nộp từ quỹ dự phòng hoặc hạn mức tín dụng đã thỏa thuận trước với ngân hàng.</li>
+        <li>Thiếu tiền: bán bớt hàng thật (thu phần lời) rồi đóng đúng số lot tương ứng – giảm cả hai bên cùng lúc.</li>
+        <li>Cân nhắc chuyển một phần sang quyền chọn (người mua quyền không bị gọi ký quỹ).</li></ol>
+        <p><b>Lưu ý:</b> lập quỹ dự phòng đủ cho biến động 300–500 USD/t × số tấn đang phòng hộ (100 t → 30.000–50.000 USD).</p>
+        <p><b>Trên hệ thống:</b> bảng lệnh ở 📒 Giao dịch hiện lãi/lỗ đang mở từng lệnh; Trợ lý cảnh báo khi sàn biến động vượt ngưỡng.</p>` },
+    { id: 'th-dao-ky-truoc-fnd', cat: 'tinhhuong', title: 'Sắp tới ngày thông báo đầu tiên: đảo kỳ lệnh phòng hộ', tags: 'tinh huong dao ky roll ngay thong bao dau tien fnd spread lenh 2 chan giao tre f27 h27',
+      sum: 'Đang MUA 4 lot RMF27, FND ≈ 28/12/2026 mà hàng giao trễ: đảo sang RMH27 bằng một lệnh spread, trước FND 1–2 tuần.',
+      body: `<p><b>Tình huống:</b> đang MUA 4 lot RMF27 phòng hộ hợp đồng bán; ngày thông báo đầu tiên (FND) RMF27 ≈ <b>28/12/2026</b>; khách lùi giao sang tháng 2.</p>
+        <p><b>Tính nhanh:</b> đảo bằng lệnh spread: BÁN 4 lot F27 + MUA 4 lot H27 cùng lúc. Spread F27 − H27 = +24 (nghịch đảo) → bên đang MUA phòng hộ <b>được lợi 24 × 40 = 960 USD</b>. Nếu thị trường thuận (−30) thì tốn 30 × 40 = 1.200 USD.</p>
+        <p><b>Xử lý:</b></p><ol><li>Đảo trước FND ít nhất 1–2 tuần – càng gần FND kỳ gần càng ít người giao dịch.</li>
+        <li>Đặt <b>một lệnh spread 2 chân</b> thay vì 2 lệnh rời để không bị lệch giá giữa hai lần đặt.</li>
+        <li>Hợp đồng trừ lùi đổi kỳ tham chiếu thì tính lại diff (xem bài khách xin lùi lịch giao).</li></ol>
+        <p><b>Lưu ý:</b> người đang MUA giữ lệnh qua FND có thể bị phân bổ thông báo giao hàng – phải nhận hàng ở kho sàn châu Âu và trả đủ tiền hàng.</p>
+        <p><b>Trên hệ thống:</b> ghi 2 lệnh (BÁN 4 F27, MUA 4 H27); Trợ lý nhắc khi còn ≤ 15 ngày tới FND.</p>` },
+    { id: 'th-chot-ptbf-ben-mua', cat: 'tinhhuong', title: 'Khách chốt giá hợp đồng trừ lùi: đóng phòng hộ cùng lúc', tags: 'tinh huong chot gia ptbf tru lui buyer call ben mua chot dong lenh cung luc dong hedge',
+      sum: 'Bán RMH27 +300, khách chốt ở 3.500 → giá bán 3.800; công ty phải MUA lại đúng số lot đang bán, cùng lúc, cùng giá.',
+      body: `<p><b>Tình huống:</b> bán 50 t cho nhà rang xay giá <b>RMH27 +300, bên mua chốt</b>. Công ty đã mua đủ 50 t hàng giá cố định và BÁN 5 lot RMH27 @3.420 để phòng hộ.</p>
+        <p><b>Tính nhanh:</b> khách chốt khi H27 = 3.500 → giá bán 3.500 + 300 = 3.800. Cùng lúc công ty MUA lại 5 lot @3.500: lệnh sàn lỗ (3.500 − 3.420) × 50 = 4.000 USD, nhưng giá bán cao hơn lúc phòng hộ (3.420 + 300 = 3.720) đúng 80 × 50 = 4.000 USD → bù nhau, công ty giữ đúng biên lời đã tính.</p>
+        <p><b>Xử lý:</b></p><ol><li>Ghi trong hợp đồng: khách báo chốt trong giờ sàn, theo lot 10 t, trước hạn chốt.</li>
+        <li>Khách chốt bao nhiêu lot → công ty đóng bấy nhiêu lot, <b>cùng lúc, cùng giá</b> (tốt nhất qua EFP).</li>
+        <li>Ghi lần chốt (🔒 Chốt) và lệnh MUA lại trên hệ thống.</li></ol>
+        <p><b>Lưu ý:</b> quên đóng lệnh khi khách đã chốt → công ty đang để lệnh BÁN "trần", tức là đang đầu cơ giá giảm.</p>` },
+    { id: 'th-efp', cat: 'tinhhuong', title: 'EFP – đổi lệnh sàn lấy hàng thật khi chốt giá', tags: 'efp exchange for physical doi lenh san chot gia tru lui moi gioi khong truot gia',
+      sum: 'Hai bên của hợp đồng hàng thật chuyển lệnh sàn cho nhau ở một giá thỏa thuận – chốt giá và đóng phòng hộ cùng lúc, không trượt giá.',
+      body: `<p><b>EFP (Exchange for Physical):</b> người mua và người bán của một hợp đồng hàng thật đổi lệnh sàn cho nhau ở giá thỏa thuận, đăng ký qua môi giới với sàn – không phải đặt lệnh ra thị trường.</p>
+        <p><b>Ví dụ</b> (tiếp bài khách chốt giá trừ lùi): khách MUA 5 lot H27 @3.500 để chốt giá; qua EFP, 5 lot MUA đó chuyển sang công ty và triệt tiêu 5 lot BÁN phòng hộ của công ty ở đúng 3.500. Hóa đơn hàng = 3.500 + 300 = 3.800 USD/t.</p>
+        <ul><li><b>Lợi ích:</b> không trượt giá, không lệch thời điểm; hai bên cùng đóng phòng hộ ở một giá.</li>
+        <li><b>Cần chuẩn bị:</b> điều khoản "chốt giá qua EFP" trong hợp đồng, thông tin tài khoản/môi giới hai bên, xác nhận bằng văn bản số lot, kỳ hạn, giá.</li>
+        <li><b>Kiểm tra:</b> xác nhận của môi giới phải trùng hợp đồng (số lot, kỳ, giá); EFP vẫn tính phí môi giới.</li></ul>` },
+    { id: 'th-basis-xau', cat: 'tinhhuong', title: 'Phòng hộ đủ lot mà vẫn lỗ: diff (basis) xấu đi', tags: 'tinh huong basis diff xau di phong ho van lo rui ro co so vu moi hang nhieu',
+      sum: 'London giảm 100, nhưng diff R2 tụt từ +166 xuống +100 → hàng mất 166, lệnh sàn chỉ bù 100: lỗ 66 USD/t là rủi ro basis.',
+      body: `<p><b>Tình huống:</b> giữ 100 t R2 S13 định bán FOB theo diff; đã BÁN 10 lot RMH27 @3.450. Lúc mua hàng diff R2 = +166 → FOB ≈ 3.616.</p>
+        <p><b>Một tháng sau:</b> London 3.350 (−100); vụ mới vào, hàng nhiều, diff R2 tụt còn +100 → FOB 3.450 (−166).</p>
+        <ul><li>Lệnh sàn lời 100 × 100 = <b>+10.000 USD</b>; hàng mất 166 × 100 = <b>−16.600 USD</b> → ròng <b>−6.600 USD</b> = phần diff mất 66 USD/t.</li></ul>
+        <p><b>Bài học:</b> futures xóa rủi ro giá London, <b>không xóa rủi ro diff</b>. Cách giảm: bán trước theo diff (trừ lùi) khi diff tốt; theo dõi mùa vụ (diff thường yếu khi vào vụ); không ôm hàng chờ diff lên quá lâu.</p>
+        <p><b>Trên hệ thống:</b> bảng 💎 Giá FOB theo chủng loại (thẻ Bảng giá) và công cụ tính trừ lùi để theo dõi diff theo ngày.</p>` },
+    { id: 'th-sai-ky', cat: 'tinhhuong', title: 'Phòng hộ khác kỳ tham chiếu: rủi ro spread', tags: 'tinh huong sai ky phong ho khac ky spread k27 f27 lech gia rui ro spread',
+      sum: 'Hợp đồng theo RMF27 nhưng mua lot RMK27: F27 tăng 150, K27 chỉ tăng 100 → lỗ 1.760 USD dù đã "phòng hộ đủ".',
+      body: `<p><b>Tình huống:</b> hợp đồng bán 38,4 t tham chiếu RMF27 nhưng công ty MUA 4 lot RMK27 @3.412 (vì thấy rẻ hơn).</p>
+        <p><b>Diễn biến:</b> F27 tăng 150, K27 chỉ tăng 100 (spread nghịch đảo dãn ra).</p>
+        <ul><li>Hàng thật (theo F27) đắt thêm 150 × 38,4 = <b>−5.760 USD</b>; lệnh K27 lời 100 × 40 = <b>+4.000 USD</b> → ròng <b>−1.760 USD</b>.</li></ul>
+        <p><b>Xử lý:</b> phòng hộ đúng kỳ tham chiếu của hợp đồng. Dùng kỳ khác thì phải theo dõi spread hằng ngày và đảo về đúng kỳ khi spread thuận lợi.</p>
+        <p><b>Trên hệ thống:</b> form lệnh sàn báo ⚠️ khi kỳ của lệnh khác kỳ tham chiếu của hợp đồng liên kết.</p>` },
+    { id: 'th-lot-le', cat: 'tinhhuong', title: 'Lot lẻ: 38,4 tấn nên mua 3 hay 4 lot?', tags: 'tinh huong lot le lam tron 3.84 lot du thieu gop vi the nhieu hop dong',
+      sum: '4 lot dư 1,6 t, 3 lot thiếu 8,4 t. Phần hở nhỏ chấp nhận được; nhiều hợp đồng thì gộp theo kỳ rồi mới làm tròn.',
+      body: `<ul><li><b>4 lot</b> (40 t): dư 1,6 t – giá giảm 300 thì lỗ thêm 1,6 × 300 = <b>480 USD</b>.</li>
+        <li><b>3 lot</b> (30 t): thiếu 8,4 t – giá tăng 300 thì lỗ 8,4 × 300 = <b>2.520 USD</b>.</li>
+        <li><b>Gộp cả công ty theo kỳ:</b> hai hợp đồng bán 38,4 t + 19,2 t cùng kỳ = 57,6 t → <b>6 lot</b> (dư 2,4 t), thay vì làm tròn từng hợp đồng.</li></ul>
+        <p><b>Quy tắc gợi ý:</b> phần hở dưới nửa lot (5 t) mỗi kỳ là chấp nhận được; quan trọng là tổng vị thế ròng từng kỳ nằm trong hạn mức.</p>
+        <p><b>Trên hệ thống:</b> dòng hợp đồng hiện "còn hở"; ô tóm tắt theo kỳ ở thẻ Vị thế hiện ròng từng kỳ.</p>` },
+    { id: 'th-loai-lenh', cat: 'tinhhuong', title: 'Đặt lệnh thế nào: thị trường, giới hạn, dừng', tags: 'loai lenh market limit stop gioi han thi truong dung truot gia gtc trong ngay dat lenh',
+      sum: 'Lệnh thị trường khớp ngay nhưng có thể trượt giá; lệnh giới hạn chắc giá nhưng có thể không khớp; lệnh dừng dễ khớp xa khi giá nhảy.',
+      body: `<ul><li><b>Lệnh thị trường (market):</b> khớp ngay ở giá tốt nhất đang có. Kỳ xa ít người giao dịch → dễ <b>trượt giá</b> vài USD/t.</li>
+        <li><b>Lệnh giới hạn (limit):</b> vd "MUA 4 lot RMF27 giá ≤ 3.440" – chỉ khớp khi giá chạm 3.440 hoặc thấp hơn; có thể không khớp nếu giá chạy đi.</li>
+        <li><b>Lệnh dừng (stop):</b> thành lệnh thị trường khi giá chạm mức đặt; giá nhảy mạnh thì khớp xa mức đặt. Lệnh <b>phòng hộ không nên đặt dừng lỗ</b> – dừng lỗ là tự bỏ bảo hiểm.</li>
+        <li><b>Hiệu lực:</b> trong ngày (DAY) hoặc tới khi hủy (GTC) – hỏi môi giới loại nào đang dùng, tránh lệnh cũ còn treo.</li></ul>
+        <p><b>Thực tế:</b> phòng hộ ngay sau khi ký hợp đồng → lệnh giới hạn sát giá hiện tại; quá 30–60 phút chưa khớp thì xem lại.</p>
+        <p><b>Trên hệ thống:</b> lệnh đã đặt mà chưa khớp ghi là <b>⏳ lệnh chờ</b> (kèm giá đặt); khớp rồi bấm ✔ Khớp, sửa giá khớp thật.</p>` },
+    { id: 'th-chua-kip-hedge', cat: 'tinhhuong', title: 'Đã bán giá chốt, giá tăng vọt khi chưa kịp phòng hộ', tags: 'tinh huong chua kip hedge gia tang manh ban gia chot lo cho gia ve phong ho ngay ky luat',
+      sum: 'Bán 3.800 khi F27 = 3.448, chưa phòng hộ, F27 lên 3.650: diff còn +150, lỗ tạm ≈ 7.757 USD. Phòng hộ ngay, không chờ "gỡ".',
+      body: `<p><b>Tình huống:</b> bán 38,4 t giá cố định 3.800 khi RMF27 = 3.448 (diff ngầm định +352), chưa phòng hộ; RMF27 tăng lên 3.650.</p>
+        <p><b>Tính nhanh:</b> lỗ tạm ≈ 202 × 38,4 = <b>7.757 USD</b>; diff ngầm định chỉ còn 3.800 − 3.650 = <b>+150</b>.</p>
+        <p><b>Ba lựa chọn:</b></p><ol><li><b>Phòng hộ ngay</b> (MUA 4 lot): khóa phần lời còn lại, không lỗ thêm. → <b>Nên làm.</b></li>
+        <li>Chờ giá về rồi mới mua: là <b>đầu cơ</b> – giá tăng tiếp thì lỗ thêm, có thể mất hết lời.</li>
+        <li>Phòng hộ một phần: MUA 2 lot ngay, 2 lot đặt lệnh giới hạn thấp hơn – chỉ khi đã có quy định cho phép.</li></ol>
+        <p><b>Bài học:</b> đặt quy định "ký hợp đồng giá cố định là phòng hộ trong cùng phiên"; người ký hợp đồng báo ngay người đặt lệnh.</p>` },
+    { id: 'th-ton-kho-gia-giam', cat: 'tinhhuong', title: 'Đang giữ hàng tồn, giá London rơi mạnh', tags: 'tinh huong ton kho gia giam manh long chua phong ho ban lot ban hang cat lo',
+      sum: '200 t tồn chưa phòng hộ, London −400 → mất ≈ 80.000 USD (≈ 2,06 tỷ đ). Chặn lỗ: bán hàng hoặc BÁN lot ngay, không ôm chờ.',
+      body: `<p><b>Tình huống:</b> 200 t tồn kho mua giá cố định, chưa phòng hộ; London giảm 400 USD/t trong 2 tuần.</p>
+        <p><b>Tính nhanh:</b> mất ≈ 400 × 200 = <b>80.000 USD ≈ 2,06 tỷ đ</b>.</p>
+        <p><b>Lựa chọn:</b></p><ol><li>Bán hàng thật nếu có khách và diff chấp nhận được.</li>
+        <li>BÁN 20 lot kỳ gần thời điểm bán hàng để chặn lỗ thêm, rồi tìm khách bán dần (mỗi lần bán hàng thì MUA lại lot tương ứng).</li>
+        <li>Giữ nguyên chờ giá hồi = đầu cơ; chỉ làm khi lãnh đạo chấp thuận và còn trong hạn mức.</li></ol>
+        <p><b>Bài học:</b> hạn mức tồn kho không phòng hộ phải đặt trước (vd ±50 t/kỳ) – vượt là phòng hộ, không bàn lại khi giá đã chạy.</p>` },
+    { id: 'th-nghich-dao', cat: 'tinhhuong', title: 'Thị trường nghịch đảo: ảnh hưởng tới giữ hàng và đảo kỳ', tags: 'tinh huong nghich dao backwardation thuan contango dao ky giu hang chi phi spread',
+      sum: 'Kỳ gần đắt hơn kỳ xa (F27 3.448 > H27 3.424): giữ hàng bị thiệt, bên BÁN phòng hộ đảo kỳ tốn tiền, bên MUA phòng hộ đảo kỳ được lợi.',
+      body: `<p><b>Nghịch đảo</b> = kỳ gần đắt hơn kỳ xa: thị trường cần hàng ngay (hàng khan).</p>
+        <ul><li><b>Giữ hàng tồn:</b> bất lợi – giá kỳ sau thấp hơn, nên ưu tiên bán/giao sớm.</li>
+        <li><b>Đảo lệnh BÁN phòng hộ</b> 10 lot F27 → H27 (spread +24): MUA lại F27 đắt, BÁN H27 rẻ → tốn 24 × 100 = <b>2.400 USD</b>.</li>
+        <li><b>Đảo lệnh MUA phòng hộ</b> 4 lot F27 → H27: BÁN F27 đắt, MUA H27 rẻ → được 24 × 40 = <b>960 USD</b>.</li>
+        <li><b>Thị trường thuận</b> (kỳ xa đắt hơn): mọi thứ ngược lại – giữ hàng được bù chi phí lưu kho, bên MUA đảo kỳ tốn tiền.</li></ul>
+        <p><b>Trên hệ thống:</b> dải SPREAD KỲ HẠN ở thẻ Vị thế và ô Cấu trúc thị trường ở Tổng quan cho biết đang nghịch đảo hay thuận.</p>` },
+    { id: 'th-lui-lich-giao', cat: 'tinhhuong', title: 'Khách xin lùi lịch giao hàng: đảo phòng hộ và tính lại diff', tags: 'tinh huong lui lich giao defer gia han giao hang dao ky tinh lai diff chi phi luu kho',
+      sum: 'Giao 12/2026 lùi sang 2/2027: đảo lệnh F27 → H27; hợp đồng trừ lùi đổi kỳ thì diff mới = diff cũ + (F27 − H27).',
+      body: `<p><b>Hợp đồng trừ lùi</b> RMF27 +300, khách xin giao tháng 2 → đổi kỳ tham chiếu sang RMH27. Để giá trị không đổi: <b>diff mới = diff cũ + (F27 − H27)</b> = 300 + 24 = <b>+324</b>.</p>
+        <p><b>Hợp đồng giá cố định</b> (vd 3.800): giá giữ nguyên, nhưng công ty phải đảo lệnh phòng hộ F27 → H27 (xem bài đảo kỳ) và chịu thêm chi phí lưu kho, lãi vay 2 tháng → nên đòi khách bù chi phí này (carry).</p>
+        <p><b>Xử lý:</b></p><ol><li>Thống nhất bằng văn bản: kỳ tham chiếu mới, diff mới, lịch giao mới.</li>
+        <li>Đảo lệnh phòng hộ cùng ngày thống nhất.</li><li>Sửa hợp đồng trên hệ thống: tháng giao, kỳ tham chiếu, diff; sửa lịch giao 🗓.</li></ol>` },
+    { id: 'th-go-hedge', cat: 'tinhhuong', title: 'Giao hàng xong: gỡ lệnh phòng hộ cho đúng', tags: 'tinh huong go hedge dong lenh phong ho giao hang xong unwind lenh tran quen dong',
+      sum: 'Hàng đã chốt giá cả hai đầu và giao xong thì lệnh sàn phải về 0 – quên đóng là đang đầu cơ, sát FND còn bị giao hàng trên sàn.',
+      body: `<ul><li>Hợp đồng bán giá chốt + mua hàng dần giá chốt: mua tới đâu đóng lot tới đó; mua đủ thì lệnh phòng hộ về 0.</li>
+        <li>Hợp đồng trừ lùi: khách chốt tới đâu đóng lot tới đó (EFP).</li>
+        <li>Cuối tháng: đối chiếu <b>lot đang mở</b> với <b>phần hở của các hợp đồng</b> – không khớp là có lệnh thừa (đầu cơ) hoặc thiếu (đang hở).</li>
+        <li>Lệnh nào tới gần FND mà hàng thật đã xong → đóng ngay.</li></ul>
+        <p><b>Trên hệ thống:</b> 📒 Giao dịch → "Lot đang mở" và cột "còn hở" của từng hợp đồng; Trợ lý nhắc lệnh sắp tới FND.</p>` },
+    { id: 'th-gap-nghi-le', cat: 'tinhhuong', title: 'Giá nhảy qua đêm, cuối tuần, Tết: chuẩn bị gì', tags: 'tinh huong gia nhay gap qua dem cuoi tuan tet nghi le gio giao dich london truc san',
+      sum: 'London giao dịch 15:00–23:30 giờ VN (mùa đông 16:00–00:30); nghỉ Tết sàn vẫn chạy – phòng hộ trước khi nghỉ và cử người trực.',
+      body: `<ul><li><b>Giờ sàn London:</b> 9:00–17:30 giờ London ≈ <b>15:00–23:30 giờ Việt Nam</b> (mùa hè châu Âu) hoặc 16:00–00:30 (mùa đông).</li>
+        <li><b>Giá nhảy (gap):</b> tin thời tiết Brazil/Việt Nam ra ngoài giờ → phiên sau mở cửa cách xa giá đóng cửa; lệnh dừng có thể khớp rất xa.</li>
+        <li><b>Tết, lễ Việt Nam:</b> văn phòng nghỉ nhưng sàn vẫn chạy → phòng hộ đủ trước kỳ nghỉ, nộp sẵn ký quỹ dự phòng, cử người trực xem giá và liên lạc môi giới.</li>
+        <li><b>Lễ ở Anh</b> (bank holiday): sàn London nghỉ – không chốt giá, không đặt lệnh được; tính trước nếu có hạn chốt giá rơi vào ngày đó.</li></ul>
+        <p><b>Trên hệ thống:</b> dòng trạng thái đầu trang cho biết ICE London đang giao dịch hay ngoài giờ.</p>` },
+    { id: 'th-call-thay-futures', cat: 'tinhhuong', title: 'Dùng quyền chọn mua (call) thay futures cho hợp đồng bán giá chốt', tags: 'tinh huong quyen chon call mua quyen phi quyen chon khong ky quy ban gia chot bao hiem gia tran',
+      sum: 'Bán 3.800 cố định: mua call RMF27 giá thực hiện 3.500, phí 120 USD/t → giá mua hàng tối đa ≈ 3.620, giá giảm thì chỉ mất phí 4.800 USD.',
+      body: `<p><b>Tình huống:</b> bán 38,4 t giá 3.800 cố định; lo giá tăng nhưng không muốn bị gọi ký quỹ.</p>
+        <p><b>Phương án:</b> MUA 4 lot quyền chọn mua (call) RMF27, giá thực hiện 3.500, phí (minh họa) 120 USD/t → tổng phí 120 × 40 = <b>4.800 USD</b>.</p>
+        <ul><li>Giá tăng: mỗi USD trên 3.500 được quyền chọn bù → giá mua hàng tối đa ≈ 3.500 + 120 = <b>3.620</b> → diff tối thiểu giữ được ≈ 3.800 − 3.620 = <b>+180</b>.</li>
+        <li>Giá giảm: không dùng quyền, công ty mua hàng rẻ hơn, chỉ mất phí 4.800 USD.</li>
+        <li>Người mua quyền <b>không bị gọi ký quỹ</b> – trả phí một lần.</li></ul>
+        <p><b>Khi nào dùng:</b> biến động mạnh, thiếu tiền ký quỹ, hoặc hợp đồng chưa chắc chắn (khách có thể hủy). Phí thật hỏi môi giới – thay đổi theo biến động.</p>` },
+    { id: 'th-hang-ky-gui', cat: 'tinhhuong', title: 'Hàng ký gửi: nông dân chốt giá sau', tags: 'tinh huong hang ky gui gui kho nong dan chot gia sau mua goi rui ro chua chot',
+      sum: 'Nông dân gửi 50 t chưa chốt giá; công ty đã bán số hàng đó giá cố định → đang thiếu 50 t tới khi nông dân chốt: MUA 5 lot.',
+      body: `<p><b>Tình huống:</b> nông dân gửi kho 50 t, chốt giá sau theo giá ngày; công ty đã dùng 50 t này giao cho một hợp đồng bán giá cố định.</p>
+        <p><b>Rủi ro:</b> chưa biết giá mua nhưng giá bán đã cố định → giá tăng thì nông dân chốt cao, công ty lỗ. Đây là vị thế <b>−50 t</b> dù hàng đang nằm trong kho.</p>
+        <p><b>Xử lý:</b> MUA 5 lot kỳ gần; mỗi lần nông dân chốt x tấn → BÁN lại x ÷ 10 lot. Đặt hạn chót chốt giá trong hợp đồng ký gửi.</p>
+        <p><b>Ngược lại:</b> hàng ký gửi chưa bán ra thì chưa có rủi ro giá với công ty (nông dân tự chịu), chỉ theo dõi ở dòng "Mua gởi chưa chốt giá" (không cộng vào vị thế ròng).</p>` },
+    { id: 'th-khach-huy', cat: 'tinhhuong', title: 'Khách hủy hợp đồng khi giá giảm mạnh (rủi ro đối tác)', tags: 'tinh huong khach huy hop dong rui ro doi tac dat coc 20% vo hop dong trong tai gia giam manh',
+      sum: 'Bán 3.800, đã MUA 4 lot @3.448; London rơi về 3.000, khách bỏ hợp đồng → lệnh sàn lỗ 17.920 USD. Cọc 20% (29.184 USD) là tấm đệm.',
+      body: `<p><b>Tình huống:</b> bán 38,4 t giá 3.800, đã MUA 4 lot RMF27 @3.448. London rơi về 3.000; khách thấy giá thị trường thấp hơn nhiều nên từ chối nhận hàng.</p>
+        <p><b>Tính nhanh:</b> lệnh sàn lỗ (3.448 − 3.000) × 40 = <b>17.920 USD</b> mà không còn hợp đồng bán để bù; nếu đã mua hàng thì còn ôm thêm hàng mất giá.</p>
+        <p><b>Giảm rủi ro:</b></p><ol><li><b>Đặt cọc</b>: 20% × 3.800 × 38,4 = <b>29.184 USD</b> – đủ đệm cho giá giảm tới ≈ 760 USD/t (như điều khoản "20% – 80% scan B/L").</li>
+        <li>Thẩm định khách, hạn mức theo từng khách; hợp đồng theo mẫu chuẩn có trọng tài (GCA/ECC).</li>
+        <li>Khách hủy → đóng lệnh phòng hộ ngay, giữ chứng từ để đòi bồi thường.</li></ol>` },
+    { id: 'th-checklist', cat: 'tinhhuong', title: 'Checklist sau mỗi giao dịch futures', tags: 'checklist sau giao dich kiem tra lenh khop ghi he thong vi the ky quy fnd bao cao',
+      sum: '7 việc kiểm tra sau mỗi lần ký hợp đồng hoặc đặt lệnh – để hàng thật và hàng ảo luôn khớp nhau.',
+      body: `<ol><li>Hợp đồng giá cố định vừa ký → đã đặt lệnh phòng hộ <b>trong cùng phiên</b> chưa?</li>
+        <li>Lệnh đã <b>khớp</b> chưa, giá khớp bao nhiêu (xác nhận của môi giới)? Ghi ✔ Khớp đúng giá.</li>
+        <li>Đúng <b>kỳ tham chiếu</b>, đúng chiều (âm thì MUA, dương thì BÁN), đúng số lot?</li>
+        <li>Vị thế ròng từng kỳ sau giao dịch có nằm trong hạn mức không?</li>
+        <li>Tài khoản còn đủ <b>ký quỹ</b> và quỹ dự phòng cho biến động 300–500 USD/t không?</li>
+        <li>Lệnh nào gần <b>FND</b> (≤ 15 ngày) cần đảo hoặc đóng?</li>
+        <li>Đã báo cáo sếp: hợp đồng, lệnh, diff khóa được, rủi ro còn lại.</li></ol>
+        <p><b>Trên hệ thống:</b> Tổng quan (dòng vàng vị thế ròng) + Giao dịch (còn hở, lệnh chờ) + Trợ lý (cảnh báo FND, biến động).</p>` },
 
     // ===================== HƯỚNG DẪN SỬ DỤNG =====================
     { id: 'dung-tren-dien-thoai', cat: 'huongdan', title: 'Dùng hệ thống trên điện thoại', tags: 'dien thoai mobile man hinh chinh nut bam quay lai doc tai lieu co chu iphone android',

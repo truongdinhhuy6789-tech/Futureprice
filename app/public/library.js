@@ -40,6 +40,9 @@
     const q = $('libSearch').value.trim();
     const list = listNow();
     $('libCats').innerHTML = [['all', '📚 Tất cả']].concat(KB.cats).map(([k, l]) => `<button type="button" class="lib-cat${!q && k === cat ? ' on' : ''}" data-cat="${k}">${l}<small>${k === 'all' ? KB.articles.length : KB.articles.filter(a => a.cat === k).length}</small></button>`).join('');
+    // Điện thoại: hàng nhóm cuộn ngang → đưa nhóm đang chọn vào giữa tầm nhìn
+    const on = $('libCats').querySelector('.lib-cat.on'); const cats = $('libCats');
+    if (on && cats.scrollWidth > cats.clientWidth) cats.scrollLeft = Math.max(0, on.offsetLeft - (cats.clientWidth - on.offsetWidth) / 2);
     box.innerHTML = (q ? `<p class="lib-hint">${list.length ? `${list.length} bài khớp "<b>${esc(q)}</b>"` : `Không tìm thấy bài nào cho "<b>${esc(q)}</b>" – thử từ khóa khác (vd: diff, chốt giá, ký quỹ, R2, spread)`}</p>` : '')
       + `<div class="lib-grid">${list.map(a => `<button type="button" class="lib-card" data-id="${a.id}"><span class="lib-card-cat">${esc(CAT[a.cat] || '')}</span><b>${esc(a.title)}</b><span>${esc(a.sum)}</span></button>`).join('')}</div>`;
   }

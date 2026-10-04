@@ -264,9 +264,20 @@
     };
     fill('phys', pos.physical, pos.totals.physical); fill('fut', pos.futures, pos.totals.futures);
     fill('dif', pos.diff, pos.totals.diff); fill('net', pos.net, pos.totals.net, true);
+    renderPeriodCards(pos);
     renderRisk(pos);
     if (state.tab === 'overview') renderOverview();
     refreshAssistant();
+  }
+  // Tóm tắt theo kỳ (điện thoại): mỗi kỳ một ô – ròng + hàng thực / sàn / trừ lùi; bấm ô → cuộn bảng tới đúng cột
+  function renderPeriodCards(pos) {
+    const box = $('periodCards'); if (!box) return;
+    const cls = v => (v < 0 ? 'neg' : v > 0 ? 'pos' : 'zero');
+    box.innerHTML = pos.columns.map((c, i) => `<button type="button" class="pc ${cls(pos.net[i])}" data-col="${i}">
+        <span class="pc-k">${E.contractLabel(c)} <small>${c}</small></span>
+        <b class="pc-v">${pos.net[i] ? signed(pos.net[i], 1) : '0'} <small>t</small></b>
+        <span class="pc-s">${pos.net[i] < 0 ? 'Hụt hàng' : pos.net[i] > 0 ? 'Dư hàng' : 'Cân bằng'}</span>
+        <span class="pc-d">HT ${fmt(pos.physical[i], 1)} · Sàn ${fmt(pos.futures[i], 1)} · TL ${fmt(pos.diff[i], 1)}</span></button>`).join('');
   }
   function renderRisk(pos) {
     const d = state.data; const risk = E.analyzeRisk(pos, { limit: d.riskLimit, priceMove: d.priceMoveUsd }); const t = pos.totals.net;
@@ -735,6 +746,32 @@
       if (btn) btn.click(); else top.classList.remove('active', 'open');
     });
   })();
+
+  // ---------- Ô tóm tắt theo kỳ → cuộn ma trận tới đúng cột (cột tên dính bên trái vẫn hiện) ----------
+  $('periodCards').addEventListener('click', e => {
+    const b = e.target.closest('[data-col]'); if (!b) return;
+    const wrap = document.querySelector('#positionTable').closest('.table-responsive');
+    const heads = document.querySelectorAll('#positionHead tr.row-col-headers th'); const th = heads[Number(b.dataset.col) + 1]; if (!wrap || !th) return;
+    wrap.scrollTo({ left: Math.max(0, th.offsetLeft - heads[0].offsetWidth), behavior: 'smooth' });
+    window.scrollTo({ top: wrap.getBoundingClientRect().top + window.scrollY - 8, behavior: 'smooth' });
+    th.classList.add('col-flash'); setTimeout(() => th.classList.remove('col-flash'), 1400);
+  });
+
+  // ---------- Bảng rộng trên điện thoại: nhắc "vuốt ngang để xem thêm cột" ----------
+  function hscrollHints() {
+    document.querySelectorAll('.table-scroll, .table-responsive').forEach(w => {
+      const more = isPhone() && !w.closest('[hidden]') && w.scrollWidth > w.clientWidth + 8;
+      let hint = w.previousElementSibling && w.previousElementSibling.classList.contains('hs-hint') ? w.previousElementSibling : null;
+      if (more && !hint) {
+        hint = document.createElement('div'); hint.className = 'hs-hint'; hint.textContent = '↔ Vuốt ngang trong bảng để xem thêm cột';
+        w.before(hint); w.addEventListener('scroll', () => { if (w.scrollLeft > 40) hint.classList.add('seen'); }, { passive: true });
+      }
+      if (hint && hint.hidden === more) hint.hidden = !more;
+    });
+  }
+  let hsTimer = 0; const hsLater = () => { clearTimeout(hsTimer); hsTimer = setTimeout(hscrollHints, 300); };
+  new MutationObserver(hsLater).observe(document.querySelector('.main-content'), { childList: true, subtree: true });
+  window.addEventListener('resize', hsLater); $('tabBar').addEventListener('click', hsLater);
 
   // ---------- Nút Trợ lý nổi: tạm ẩn khi cuộn xuống (đọc không bị che), hiện lại khi cuộn lên ----------
   (function fabAutoHide() {

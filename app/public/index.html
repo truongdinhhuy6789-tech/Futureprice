@@ -3,6 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <script>
+    // iPhone/iPad: không tự phóng to khi bấm vào ô nhập (Safari vẫn cho phóng to bằng 2 ngón)
+    if (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) {
+      document.querySelector('meta[name=viewport]').setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover');
+    }
+  </script>
   <meta name="theme-color" content="#0B1120">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Việt Thiên Vị Thế">
@@ -142,6 +148,7 @@
             </div>
             <div class="header-tools"><span class="unit-note">Cập nhật: <b id="lastSaved">—</b></span></div>
           </div>
+          <div class="period-cards" id="periodCards" aria-label="Tóm tắt vị thế ròng theo kỳ"></div>
           <div class="table-responsive">
             <table class="ldc-matrix-table" id="positionTable"><thead id="positionHead"></thead><tbody id="positionBody"></tbody></table>
           </div>
