@@ -49,6 +49,7 @@
     if (tab === 'hedge') renderHedge();
     if (tab === 'board') renderBoard();
     if (tab === 'research') renderResearch();
+    if (tab === 'simulator' && window.VTSimulator) window.VTSimulator.render();
     if (tab === 'contracts' && window.VTContracts) window.VTContracts.render();
     if (tab === 'library' && window.VTLibrary) window.VTLibrary.render();
     window.scrollTo({ top: 0, behavior: 'smooth' });

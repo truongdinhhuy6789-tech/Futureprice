@@ -1272,6 +1272,23 @@ body {
 
 .data-table .txt { font-family: var(--font-sans); font-size: 12px; }
 
+/* Sàn CQG giả lập */
+.sim-card { overflow: hidden; }
+.sim-demo-badge { padding: 7px 11px; border: 1px solid #F59E0B; border-radius: 999px; color: #FBBF24; font-size: 11px; font-weight: 800; white-space: nowrap; }
+.sim-warning { margin-bottom: 14px; padding: 11px 14px; border: 1px solid rgba(245,158,11,.45); border-radius: 8px; background: rgba(245,158,11,.1); color: #FDE68A; }
+.sim-kpis { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 14px; }
+.sim-kpis>div { padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; background: #0F172A; }
+.sim-kpis small { display: block; color: var(--text-muted); margin-bottom: 5px; }.sim-kpis b { font-family: var(--font-mono); color: #F8FAFC; }
+.sim-layout { display: grid; grid-template-columns: minmax(260px,.85fr) minmax(360px,1.6fr); gap: 14px; margin-bottom: 14px; }
+.sim-dom-wrap,.sim-ticket { border: 1px solid var(--border-color); border-radius: 9px; background: #0B1324; padding: 14px; }.sim-layout h3 { margin: 0 0 10px; color: #E2E8F0; }
+.sim-dom { width: 100%; border-collapse: collapse; font-family: var(--font-mono); text-align: center; }.sim-dom th,.sim-dom td { padding: 7px; border-bottom: 1px solid #1E293B; }.sim-dom th:first-child,.sim-buy { color: #34D399!important; }.sim-dom th:last-child,.sim-sell { color: #FB7185!important; }.sim-dom .at-market { background: rgba(59,130,246,.16); font-weight: 800; }
+.sim-market-tools,.sim-send,.sim-footer { display: flex; gap: 8px; align-items: center; margin-top: 10px; }.sim-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }.sim-ticket label { display: block; color: #94A3B8; font-size: 12px; margin-bottom: 9px; }.sim-ticket .form-control { margin-top: 4px; }
+.sim-send .btn { flex: 1; font-weight: 900; }.sim-buy-btn { background: #059669; color: white; }.sim-sell-btn { background: #E11D48; color: white; }
+.sim-coach { padding: 12px 14px; margin-bottom: 14px; border-left: 4px solid #38BDF8; background: rgba(14,165,233,.1); color: #BAE6FD; }
+.sim-orders th,.sim-orders td { white-space: nowrap; }.sim-status { padding: 3px 7px; border-radius: 999px; background: #334155; font-size: 10px; font-weight: 800; }.sim-status.ok { background: rgba(16,185,129,.2); color: #6EE7B7; }.sim-status.bad { background: rgba(244,63,94,.2); color: #FDA4AF; }.sim-status.warn { background: rgba(245,158,11,.2); color: #FCD34D; }
+.sim-mini { margin: 1px 2px; padding: 4px 7px; border: 1px solid #475569; border-radius: 5px; background: #172033; color: #E2E8F0; cursor: pointer; }.sim-empty { color: #64748B!important; padding: 24px!important; }.sim-log { margin-top: 12px; color: #CBD5E1; }.sim-log summary { cursor: pointer; font-weight: 700; }.sim-log p { margin: 6px 0; }.sim-log time { color: #64748B; margin-right: 8px; }.sim-log .warn { color: #FCD34D; }.sim-log .bad { color: #FDA4AF; }.sim-footer { justify-content: space-between; color: #64748B; font-size: 11px; }
+@media(max-width:768px){.sim-kpis{grid-template-columns:1fr 1fr}.sim-layout{grid-template-columns:1fr}.sim-form-row{grid-template-columns:1fr 1fr}.sim-footer{align-items:flex-start;flex-direction:column}.sim-demo-badge{font-size:9px}.tab-bar{overflow-x:auto}.tab-btn{min-width:64px}}
+
 /* Đăng nhập & chế độ chỉ xem */
 .role-badge { font-size: 12px; color: var(--text-secondary); background: var(--bg-card-secondary); border: 1px solid var(--border-color); padding: 6px 10px; border-radius: 6px; white-space: nowrap; }
 .role-badge a { color: var(--blue); text-decoration: none; }

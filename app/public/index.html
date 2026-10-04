@@ -50,6 +50,7 @@
       <button class="tab-btn" data-tab="hedge" role="tab"><span class="tab-ico">🛡️</span><span class="tab-txt">Phòng hộ</span></button>
       <button class="tab-btn" data-tab="board" role="tab"><span class="tab-ico">🌐</span><span class="tab-txt">Bảng giá</span></button>
       <button class="tab-btn" data-tab="research" role="tab"><span class="tab-ico">🔬</span><span class="tab-txt">Nghiên cứu</span></button>
+      <button class="tab-btn" data-tab="simulator" role="tab"><span class="tab-ico">🎮</span><span class="tab-txt">Sàn giả lập</span></button>
       <button class="tab-btn" data-tab="library" role="tab"><span class="tab-ico">📚</span><span class="tab-txt">Kiến thức</span></button>
     </nav>
 
@@ -281,6 +282,16 @@
           <div class="research-guide" id="researchGuide"></div>
         </section>
       </section>
+      <!-- ================= 6. SÀN CQG GIẢ LẬP ================= -->
+      <section class="tab-panel" data-panel="simulator" hidden>
+        <section class="section-card sim-card">
+          <div class="section-header"><div class="title-wrap">
+            <h2 class="section-title">🎮 SÀN CQG GIẢ LẬP – HUẤN LUYỆN TEAM</h2>
+            <p class="section-desc">Môi trường học nội bộ, không kết nối CQG và không gửi lệnh thật. Dữ liệu giả lập chỉ lưu trên trình duyệt này.</p>
+          </div><span class="sim-demo-badge">DEMO · KHÔNG TIỀN THẬT</span></div>
+          <div id="simulatorRoot"></div>
+        </section>
+      </section>
       <!-- ================= 5. THƯ VIỆN KIẾN THỨC ================= -->
       <section class="tab-panel" data-panel="library" hidden>
         <section class="section-card lib-card-wrap">
@@ -350,6 +361,7 @@
   <script src="knowledge.js"></script>
   <script src="assistant.js"></script>
   <script src="charts.js"></script>
+  <script src="simulator.js"></script>
   <script src="app.js"></script>
   <script src="contracts.js"></script>
   <script src="grades.js"></script>
