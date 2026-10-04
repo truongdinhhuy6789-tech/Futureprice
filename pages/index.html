@@ -10,7 +10,8 @@
   <link rel="icon" type="image/png" href="logo-vietthien.png">
   <link rel="apple-touch-icon" href="logo-vietthien.png">
   <!-- Link cố định (GitHub Pages) → tự chuyển tới hệ thống đang chạy trên máy chủ công ty.
-       Địa chỉ hệ thống trong link.json được mã hóa; khóa nằm sau dấu # của link được gửi (không bao giờ gửi lên GitHub). -->
+       link.json: dạng thường { url } (mặc định, link không cần khóa) hoặc mã hóa { iv, ct } (khóa nằm sau dấu # – bật bằng
+       "pagesEncrypt": true trong app/data/access.json). -->
   <style>
     :root { --bg: #0B1120; --card: #111B2E; --line: #23334F; --text: #F8FAFC; --muted: #94A3B8; --gold: #FBBF24; --red: #FDA4AF; --green: #6EE7B7; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -43,10 +44,12 @@
     var $ = function (id) { return document.getElementById(id); };
     function say(m, cls) { $('msg').innerHTML = m; $('st').className = 'status ' + (cls || ''); }
     var key = decodeURIComponent((location.hash || '').slice(1)).trim();
-    if (!key) { say('Link thiếu mã truy cập. Hãy mở đúng link được gửi (có phần sau dấu #).', 'bad'); return; }
-    if (!window.crypto || !crypto.subtle) { say('Trình duyệt quá cũ – hãy mở bằng Chrome, Safari hoặc Edge bản mới.', 'bad'); return; }
     var b64 = function (s) { return Uint8Array.from(atob(s), function (c) { return c.charCodeAt(0); }); };
+    // link.json dạng thường { url } → dùng luôn; dạng mã hóa { iv, ct } → cần khóa sau dấu #
     function decrypt(obj) {
+      if (obj.url) return Promise.resolve(String(obj.url));
+      if (!key) return Promise.reject(new Error('thiếu khóa'));
+      if (!window.crypto || !crypto.subtle) return Promise.reject(new Error('trình duyệt cũ'));
       return crypto.subtle.digest('SHA-256', new TextEncoder().encode(key))
         .then(function (raw) { return crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['decrypt']); })
         .then(function (k) { return crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(obj.iv) }, k, b64(obj.ct)); })
@@ -66,7 +69,7 @@
       var i = 0, found = null, wrongKey = false;
       (function next() {
         if (i >= sources.length) {
-          if (wrongKey) { say('Mã truy cập không đúng – hãy mở đúng link được gửi.', 'bad'); return; }
+          if (wrongKey) { say(key ? 'Mã truy cập không đúng – hãy mở đúng link được gửi.' : 'Link thiếu mã truy cập – hãy mở đúng link được gửi (có phần sau dấu #).', 'bad'); return; }
           say(found ? 'Hệ thống chưa phản hồi – máy chủ công ty có thể đang tắt, mất mạng hoặc vừa đổi đường truyền. Tự thử lại sau 20 giây…' : 'Chưa lấy được địa chỉ hệ thống. Tự thử lại sau 20 giây…', 'warn');
           if (found && found.updatedAt) $('foot').textContent = 'Địa chỉ hệ thống cập nhật lúc ' + when(found.updatedAt) + '.';
           $('retry').hidden = false; timer = setTimeout(go, 20000); return;

@@ -85,10 +85,13 @@ function decryptLink(obj, key) {
   d.setAuthTag(buf.subarray(buf.length - 16)); return Buffer.concat([d.update(buf.subarray(0, buf.length - 16)), d.final()]).toString('utf8');
 }
 let pagesPending = false;
+// Mặc định link cố định KHÔNG cần khóa (theo yêu cầu): pages/link.json ghi địa chỉ dạng thường.
+// Muốn bật lại khóa (link có #…, địa chỉ mã hóa): đặt "pagesEncrypt": true trong app/data/access.json rồi khởi động lại bộ giữ link.
+function pagesEncrypt() { try { return JSON.parse(fs.readFileSync(ACCESS_FILE, 'utf8')).pagesEncrypt === true; } catch (e) { return false; } }
 async function publishPages(url) {
-  const key = pagesKey(), repo = repoInfo();
-  if (!key || !repo) { pagesPending = false; return false; }
-  state.permanent = `https://${repo.owner.toLowerCase()}.github.io/${repo.repo}/#${key}`;
+  const enc = pagesEncrypt(), repo = repoInfo(); const key = enc ? pagesKey() : null;
+  if (!repo || (enc && !key)) { pagesPending = false; return false; }
+  state.permanent = `https://${repo.owner.toLowerCase()}.github.io/${repo.repo}/${enc ? '#' + key : ''}`;
   const token = gitToken(); if (!token) { pagesPending = true; log('Chưa lấy được quyền GitHub – sẽ thử cập nhật link cố định lại sau.'); save(); return false; }
   const api = `https://api.github.com/repos/${repo.owner}/${repo.repo}/contents/pages/link.json`;
   const h = { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'User-Agent': 'VietThien-LinkKeeper', 'X-GitHub-Api-Version': '2022-11-28' };
@@ -97,9 +100,14 @@ async function publishPages(url) {
     const cur = await fetch(`${api}?ref=main`, { headers: h, signal: AbortSignal.timeout(20000) });
     if (cur.ok) {
       const j = await cur.json(); sha = j.sha;
-      try { if (decryptLink(JSON.parse(Buffer.from(j.content, 'base64').toString('utf8')), key) === url) { pagesPending = false; state.pagesOk = new Date().toISOString(); save(); return true; } } catch (e) { /* khóa cũ/khác → ghi đè */ }
+      try {
+        const old = JSON.parse(Buffer.from(j.content, 'base64').toString('utf8'));
+        const same = enc ? (!old.url && decryptLink(old, key) === url) : old.url === url;
+        if (same) { pagesPending = false; state.pagesOk = new Date().toISOString(); save(); return true; }
+      } catch (e) { /* định dạng/khóa cũ → ghi đè */ }
     } else if (cur.status !== 404) throw new Error(`đọc HTTP ${cur.status}`);
-    const body = { message: 'Cập nhật link online (tự động)', branch: 'main', content: Buffer.from(JSON.stringify(encryptLink(url, key), null, 2) + '\n').toString('base64') };
+    const doc = enc ? encryptLink(url, key) : { v: 2, url, updatedAt: new Date().toISOString() };
+    const body = { message: 'Cập nhật link online (tự động)', branch: 'main', content: Buffer.from(JSON.stringify(doc, null, 2) + '\n').toString('base64') };
     if (sha) body.sha = sha;
     const r = await fetch(api, { method: 'PUT', headers: { ...h, 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(20000) });
     if (!r.ok) throw new Error(`ghi HTTP ${r.status} ${(await r.text()).slice(0, 160)}`);
